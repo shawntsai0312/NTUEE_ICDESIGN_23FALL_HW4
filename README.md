@@ -8,23 +8,27 @@ source ./tool.sh
 
 #### How To Run
 ```shell
-cd src
-./check.sh
-./delay.sh
+./run.sh
 ```
 
-#### Cases
-|number  |cases          |
-|--------|---------------|
-|0       |high card      |
-|1       |one pair       |
-|2       |two pair       |
-|3       |three of a kind|
-|4       |straight       |
-|5       |flush          |
-|6       |full house     |
-|7       |four of a kind |
-|8       |straight flush |
+#### How To Check Waveform
+```shell
+nWave &
+```
+1. Open sigmoid.vcd
+2. Get signals : tb/DUT
+3. Choose the signals wanna check
 
-#### Info
-* For more information, please check out pdfs in the doc directory
+#### Input and Output Explanation
+* Input : a 8-bit signed binary number (2's complement), divided by 32 to get decimal value
+  * for example :
+    * 1000_0000 represent -128, divided by 32 will be -4
+    * 0111_1111 represent  127, divided by 32 will be 3.96875
+* Output : a 16-bit unsigned binary number, divided by 2^15 to get decimal value
+  * for example :
+    * 1000_0000_0000_0000 represent 2^15, divided by 2^15 will be 1
+    * 0010_0000_0000_0000 represent 2^13, divided by 2^15 will be 0.25
+
+#### Goal
+* Using basic logic gates and flip-flops to realize a "Sigmoid Approximator"
+* For more Info, please checkout documents in doc/

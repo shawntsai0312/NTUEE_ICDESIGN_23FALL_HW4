@@ -1,0 +1,1 @@
+source /usr/cad/synopsys/CIC/vcs.cshrc
