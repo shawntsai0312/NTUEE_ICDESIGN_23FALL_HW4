@@ -41,3 +41,12 @@ nWave &
 3. Calculate y = ax + b
 4. If the input is negative, then invert every bit of y
    * y[15:0]^x[7]
+
+#### JS Files Explanation
+|JS File                  |Result File                  |Performance           |Explanation                                        |
+|-------------------------|-----------------------------|----------------------|---------------------------------------------------|
+|js/sigmoidApproximate.js |jsResults/OutApproximate.dat |0.0005462988254408606 |directly use secant lines to approximate on [-4,4] |
+|js/sigmoidPractice.js    |jsResults/OutPractice.dat    |0.004392298309425841  |1. use the absolute value (if negative, invert bits) <br /> 2. use secant lines to approximate on [0,4] <br /> 3. if negative, invert bits|
+|js/sigmoidPractice2.js   |jsResults/OutPractice2.dat   |0.0005369770152422815 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use secant lines to approximate on [0,4] <br /> 3. if negative, invert bits|
+|js/sigmoidPractice3.js   |jsResults/OutPractice3.dat   |0.0003191445227389968 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if negative, invert bits|
+|js/sigmoidPractice4.js   |jsResults/OutPractice4.dat   |0.0002772662583153503 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if negative, invert bits|
