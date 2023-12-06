@@ -11,15 +11,15 @@ module sigmoid (
 	// Your design
 	wire [8:0] abs_x;
 	wire [50:0] handleInputNumber;
-	handleInput(abs_x, 8'b0001_1010, handleInputNumber);
+	handleInput(abs_x, 8'b1000_0000, handleInputNumber);
 
 	wire CTRL0, CTRL1, CTRL2;
 	wire [7:0] aValue;
 	wire [15:0] bValue;
 	wire [50:0] ctrlNumber, aSelectNumber, bSelectNumber;
 	Mux2Bus #(3) ({CTRL0, CTRL1, CTRL2}, abs_x[6:4], 3'b111, abs_x[8], ctrlNumber);
-	aSelector(aValue, CTRL0, CTRL1, CTRL2, aSelectNumber);
-	bSelector(bValue, CTRL0, CTRL1, CTRL2, bSelectNumber);
+	a8bitsSelector(aValue, CTRL0, CTRL1, CTRL2, aSelectNumber);
+	b16bitsSelector(bValue, CTRL0, CTRL1, CTRL2, bSelectNumber);
 
 endmodule
 
@@ -400,13 +400,39 @@ module addOne(
 	assign number = number1 + number2;
 endmodule
 
-module aSelector(
+module a6bitsSelector(
 		output [7:0] out,
 		input CTRL0,
 		input CTRL1,
 		input CTRL2,
 		output [50:0] number
 	);
+	// 2^(-3) to 2^(-10)
+	// shift 0 bit after multiplication
+	Mux8Bus #(6) (out,
+				6'b1111_11,
+				6'b1110_00,
+				6'b1011_00,
+				6'b1000_00,
+				6'b0101_10,
+				6'b0011_11,
+				6'b0010_01,
+				6'b0001_10,
+				CTRL0,
+				CTRL1,
+				CTRL2,
+				number);
+endmodule
+
+module a8bitsSelector(
+		output [7:0] out,
+		input CTRL0,
+		input CTRL1,
+		input CTRL2,
+		output [50:0] number
+	);
+	// 2^(-3) to 2^(-10)
+	// shift 0 bit after multiplication
 	Mux8Bus #(8) (out,
 				8'b1111_1010,
 				8'b1101_1110,
@@ -422,13 +448,14 @@ module aSelector(
 				number);
 endmodule
 
-module bSelector(
+module b16bitsSelector(
 		output [15:0] out,
 		input CTRL0,
 		input CTRL1,
 		input CTRL2,
 		output [50:0] number
 	);
+	// 2^0 to 2^(-15)
 	Mux8Bus #(16) (out,
 				16'b0100_0000_0000_0000,
 				16'b0100_0001_1100_0110,
