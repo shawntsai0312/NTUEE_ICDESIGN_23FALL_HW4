@@ -48,7 +48,7 @@ const inputFilePath = '../pattern/Inn.dat';
 const inputData = fs.readFileSync(inputFilePath, 'utf-8').split('\n');
 
 // Convert binary to decimal and write to output file
-const outputFilePath = '../pattern/OutPractice4.dat';
+const outputFilePath = '../jsResults/OutPractice4.dat';
 var mse = 0;
 const outputData = inputData.map((line) => {
     const decimalX = binaryToDecimal(line.trim()) / 32;
