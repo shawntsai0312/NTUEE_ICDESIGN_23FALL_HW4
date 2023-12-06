@@ -32,3 +32,12 @@ nWave &
 #### Goal
 * Using basic logic gates and flip-flops to realize a "Sigmoid Approximator"
 * For more Info, please checkout documents in doc/
+
+#### Solution
+1. Get the absolute value of the input (2's complement)
+   * add a sign bit x[8] ( =x[7]), invert x[7,0] and add 1
+2. Find out the range of the absolute value and determine a and b
+   * 8-1 Mux
+3. Calculate y = ax + b
+4. If the input is negative, then invert every bit of y
+   * y[15:0]^x[7]
