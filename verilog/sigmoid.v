@@ -9,18 +9,52 @@ module sigmoid (
 	);
 
 	// Your design
+	
 	wire [8:0] abs_x;
-	wire [50:0] handleInputNumber;
-	handleInput(abs_x, 8'b1000_0000, handleInputNumber);
+	wire [50:0] handleInputNumber, and2BusNumber;
+
+	wire [7:0] validX;
+	And2Bus #(8) (validX, i_x, i_in_valid, and2BusNumber);
+	handleInput(abs_x, validX, handleInputNumber);
+
+	// wire [7:0] inTest;
+	// assign inTest = 8'b11000000;
+	// handleInput(abs_x, inTest, handleInputNumber);
 
 	wire CTRL0, CTRL1, CTRL2;
-	wire [7:0] aValue;
-	wire [15:0] bValue;
+	wire [3:0] aValue;
+	wire [11:0] bValue;
 	wire [50:0] ctrlNumber, aSelectNumber, bSelectNumber;
-	Mux2Bus #(3) ({CTRL0, CTRL1, CTRL2}, abs_x[6:4], 3'b111, abs_x[8], ctrlNumber);
-	a8bitsSelector(aValue, CTRL0, CTRL1, CTRL2, aSelectNumber);
-	b16bitsSelector(bValue, CTRL0, CTRL1, CTRL2, bSelectNumber);
+	Mux2Bus #(3) ({CTRL0, CTRL1, CTRL2}, abs_x[6:4], 3'b111, abs_x[7], ctrlNumber);
+	a4bitsSelector( aValue[3:0], CTRL0, CTRL1, CTRL2, aSelectNumber);
+	b10bitsSelector(bValue[9:0], CTRL0, CTRL1, CTRL2, bSelectNumber);
+	assign bValue[11:10] = 2'b01;
 
+	wire [11:0] funcOut;
+	wire dontCare;
+	wire [11:0] mul;
+	wire [50:0] mulNumber, addNumber;
+	mul8by4(mul[11:0], abs_x[7:0], aValue[3:0], mulNumber);
+	carrySkip12(funcOut, dontCare, mul, bValue, 1'b0, addNumber);
+
+	wire [15:0] outTemp;
+	wire [10:0] nFuncOut;
+	wire [50:0] IvBusNumber, Mux2BusNumber;
+
+	// if abs_x[8] => invert funcOut[10:0] and assign to 
+	IvBus #(11) (nFuncOut[10:0], funcOut[10:0], IvBusNumber);
+	Mux2Bus #(11) (outTemp[14:4], funcOut[10:0], nFuncOut[10:0], abs_x[8], Mux2BusNumber);
+	assign outTemp[15] = 1'b0;
+	assign outTemp[3:0] = 4'b0;
+
+	wire [50:0] dffNumber1, dffNumber2;
+	FD2(o_out_valid, i_in_valid, clk, rst_n, dffNumber1);
+	REGP #(16) (o_y, outTemp, clk, rst_n, dffNumber2);
+	assign number = handleInputNumber + and2BusNumber 
+					+ ctrlNumber + aSelectNumber + bSelectNumber
+					+ mulNumber + addNumber
+					+ IvBusNumber + Mux2BusNumber
+					+ dffNumber1 + dffNumber2;
 endmodule
 
 module ND8(
@@ -107,10 +141,10 @@ endmodule
 module REGP#(
 		parameter BW = 2
 	)(
-		input           clk,
-		input           rst_n,
 		output [BW-1:0] Q,
 		input  [BW-1:0] D,
+		input           clk,
+		input           rst_n,
 		output [  50:0] number
 	);
 
@@ -447,7 +481,7 @@ module carrySkip12(
 endmodule
 
 module a4bitsSelector(
-		output [7:0] out,
+		output [3:0] out,
 		input CTRL0,
 		input CTRL1,
 		input CTRL2,
@@ -470,14 +504,14 @@ module a4bitsSelector(
 endmodule
 
 module b10bitsSelector(
-		output [15:0] out,
+		output [9:0] out,
 		input CTRL0,
 		input CTRL1,
 		input CTRL2,
 		output [50:0] number
 	);
 	// 2^(-2) to 2^(-11)
-	Mux8Bus #(12) (out,
+	Mux8Bus #(10) (out,
 				10'b00_0000_0011,
 				10'b00_0001_1101,
 				10'b00_0111_1110,
@@ -524,9 +558,9 @@ module mul8by4(
 	wire [50:0] adderNumber1, adderNumber2, adderNumber3;
 	wire [50:0] adderNumber;
 
-	carrySkip12(add1[11:0], dontCare1, temp0[11:0], temp1[11:0], adderNumber1);
-	carrySkip12(add2[11:0], dontCare2, temp2[11:0], temp3[11:0], adderNumber2);
-	carrySkip12( out[11:0], dontCare3,  add1[11:0],  add2[11:0], adderNumber3);
+	carrySkip12(add1[11:0], dontCare1, temp0[11:0], temp1[11:0], 1'b0, adderNumber1);
+	carrySkip12(add2[11:0], dontCare2, temp2[11:0], temp3[11:0], 1'b0, adderNumber2);
+	carrySkip12( out[11:0], dontCare3,  add1[11:0],  add2[11:0], 1'b0, adderNumber3);
 
 	assign adderNumber = adderNumber1 + adderNumber2 + adderNumber3;
 	assign number = tempNumber + adderNumber;

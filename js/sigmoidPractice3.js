@@ -57,7 +57,7 @@ const outputData = inputData.map((line, index) => {
     let approximateY = a[Math.floor(absX * 2)] * absX + b[Math.floor(absX * 2)]
     if (absX == 4) approximateY = a[7] * absX + b[7]
     if (line.trim()[0] === '1') {
-        approximateY = 1 - Math.pow(2, -15) - approximateY;
+        approximateY = 1 - Math.pow(2, -11) - approximateY;
     }
     const error = approximateY - decimalY
     mse += error * error

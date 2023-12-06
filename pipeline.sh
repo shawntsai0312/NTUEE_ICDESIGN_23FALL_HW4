@@ -1,1 +1,1 @@
-vcs src/tb.v src/sigmoid.v src/lib.v -full64 -R -v2005 -debug_access+all +v2k+define+PIPELINE
+vcs verilog/tb.v verilog/sigmoid.v verilog/lib.v -full64 -R -v2005 -debug_access+all +v2k+define+PIPELINE

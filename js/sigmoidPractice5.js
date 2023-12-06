@@ -38,6 +38,19 @@ const binaryToDecimal = (binary) => {
     return isNegative ? -(256 - absoluteValue) : absoluteValue;
 };
 
+const padBinaryTo16Bits = binaryNumber => {
+    // Ensure the binary input is less than 16 bits
+    if (binaryNumber.length >= 16) {
+      console.error('Binary input is already 16 bits or longer.');
+      return null;
+    }
+  
+    // Pad with leading zeros to make it 16 bits
+    const paddedBinary = binaryNumber.padStart(16, '0');
+  
+    return paddedBinary;
+  };
+
 // Read input file
 const inputFilePath = '../pattern/Inn.dat';
 const inputData = fs.readFileSync(inputFilePath, 'utf-8').split('\n');
@@ -56,12 +69,20 @@ const outputData = inputData.map((line, index) => {
     let approximateY = a[Math.floor(absX * 2)] * absX + b[Math.floor(absX * 2)]
     if (absX == 4) approximateY = a[7] * absX + b[7]
     if (line.trim()[0] === '1') {
-        approximateY = 1 - Math.pow(2, -15) - approximateY;
+        approximateY = 1 - Math.pow(2, -11) - approximateY;
     }
     const error = approximateY - decimalY
     mse += error * error
     // console.log(a[Math.floor(decimalX * 2) + 8], b[Math.floor(decimalX * 2) + 8])
-    return "Input : " + decimalX.toString() + "\nGolden : " + decimalY.toString() + "\nApproximate : " + approximateY.toString() + "\nError : " + error.toString() + "\n"
+    return ("InputDec : " + decimalX.toString() 
+            + "\nInputBin : " + line
+            + "\nGoldenDec : " + golDataBin[index]
+            + "\nGoldenBin : " + decimalY.toString() 
+            + "\nApproximateDec : " + approximateY.toString() 
+            + "\nApproximateBin : " + padBinaryTo16Bits((approximateY*Math.pow(2,15)).toString(2))
+            + "\nApproximateHex : " + (approximateY*Math.pow(2,15)).toString(16)
+            + "\nError : " + error.toString() 
+            + "\n")
 });
 
 fs.writeFileSync(outputFilePath, outputData.join('\n'), 'utf-8');
