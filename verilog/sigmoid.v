@@ -164,6 +164,36 @@ module IvBus#(
 	assign number = sum;
 endmodule
 
+module And2Bus#(
+		parameter BW = 2
+	)(
+		output [BW-1:0] out,
+		input  [BW-1:0] in1,
+		input  in2,
+		output [  50:0] number
+	);
+
+	wire [50:0] numbers [0:BW-1];
+
+	genvar i;
+	generate
+		for (i=0; i<BW; i=i+1) begin
+			AN2 an2(out[i], in1[i], in2, numbers[i]);
+		end
+	endgenerate
+
+	//sum number of transistors
+	reg [50:0] sum;
+	integer j;
+	always @(*) begin
+		sum = 0;
+		for (j=0; j<BW; j=j+1) begin 
+			sum = sum + numbers[j];
+		end
+	end
+	assign number = sum;
+endmodule
+
 module Mux2Bus#(
 		parameter BW = 2
 	)(
@@ -400,73 +430,104 @@ module addOne(
 	assign number = number1 + number2;
 endmodule
 
-module a6bitsSelector(
+module carrySkip12(
+		output [11:0] S,
+		output Cout,
+		input [11:0] A,
+		input [11:0] B,
+		input Cin,
+		output [50:0] number
+	);
+	wire carryBetween1, carryBetween2;
+	wire [50:0] number1, number2, number3;
+	carrySkip4(S[ 3:0], carryBetween1, A[ 3:0], B[ 3:0], 		   Cin, number1);
+	carrySkip4(S[ 7:4], carryBetween2, A[ 7:4], B[ 7:4], carryBetween1, number2);
+	carrySkip4(S[11:8],          Cout, A[11:8], B[11:8], carryBetween2, number3);
+	assign number = number1 + number2 + number3;
+endmodule
+
+module a4bitsSelector(
 		output [7:0] out,
 		input CTRL0,
 		input CTRL1,
 		input CTRL2,
 		output [50:0] number
 	);
-	// 2^(-3) to 2^(-10)
-	// shift 0 bit after multiplication
-	Mux8Bus #(6) (out,
-				6'b1111_11,
-				6'b1110_00,
-				6'b1011_00,
-				6'b1000_00,
-				6'b0101_10,
-				6'b0011_11,
-				6'b0010_01,
-				6'b0001_10,
+	// 2^(-3) to 2^(-6)
+	Mux8Bus #(4) (out,
+				4'b1111,
+				4'b1110,
+				4'b1011,
+				4'b1000,
+				4'b0110,
+				4'b0100,
+				4'b0010,
+				4'b0001,
 				CTRL0,
 				CTRL1,
 				CTRL2,
 				number);
 endmodule
 
-module a8bitsSelector(
-		output [7:0] out,
-		input CTRL0,
-		input CTRL1,
-		input CTRL2,
-		output [50:0] number
-	);
-	// 2^(-3) to 2^(-10)
-	// shift 0 bit after multiplication
-	Mux8Bus #(8) (out,
-				8'b1111_1010,
-				8'b1101_1110,
-				8'b1011_0001,
-				8'b1000_0001,
-				8'b0101_1000,
-				8'b0011_1010,
-				8'b0010_0101,
-				8'b0001_0111,
-				CTRL0,
-				CTRL1,
-				CTRL2,
-				number);
-endmodule
-
-module b16bitsSelector(
+module b10bitsSelector(
 		output [15:0] out,
 		input CTRL0,
 		input CTRL1,
 		input CTRL2,
 		output [50:0] number
 	);
-	// 2^0 to 2^(-15)
-	Mux8Bus #(16) (out,
-				16'b0100_0000_0000_0000,
-				16'b0100_0001_1100_0110,
-				16'b0100_0111_0110_1101,
-				16'b0101_0000_0101_1111,
-				16'b0101_1010_1000_1101,
-				16'b0110_0100_0001_1000,
-				16'b0110_1100_0000_0101,
-				16'b0111_0010_0001_1010,
+	// 2^(-2) to 2^(-11)
+	Mux8Bus #(12) (out,
+				10'b00_0000_0011,
+				10'b00_0001_1101,
+				10'b00_0111_1110,
+				10'b01_0000_1111,
+				10'b01_1000_1011,
+				10'b10_0010_0100,
+				10'b10_1110_0010,
+				10'b11_0101_1000,
 				CTRL0,
 				CTRL1,
 				CTRL2,
 				number);
+endmodule
+
+module mul8by4(
+		output [11:0] out,
+		input  [7:0] in8,
+		input  [3:0] in4,
+		output [50:0] number
+	);
+	wire [11:0] temp0, temp1, temp2, temp3;
+	wire [50:0] temp0Number, temp1Number, temp2Number, temp3Number;
+	wire [50:0] tempNumber;
+
+	And2Bus #(8) (temp0[7:0], in8[7:0], in4[0], temp0Number);
+	assign temp0[11:8] = 4'b0000;
+
+	And2Bus #(8) (temp1[8:1], in8[7:0], in4[1], temp1Number);
+	assign temp1[11:9] = 3'b000;
+	assign temp1[0] = 1'b0;
+
+	And2Bus #(8) (temp2[9:2], in8[7:0], in4[2], temp2Number);
+	assign temp2[11:10] = 2'b00;
+	assign temp2[1:0] = 2'b00;
+
+	And2Bus #(8) (temp3[10:3], in8[7:0], in4[3], temp3Number);
+	assign temp3[11] = 1'b0;
+	assign temp3[2:0] = 3'b000;
+
+	assign tempNumber = temp0Number + temp1Number + temp2Number + temp3Number;
+
+	wire [11:0] add1, add2;
+	wire dontCare1, dontCare2, dontCare3;
+	wire [50:0] adderNumber1, adderNumber2, adderNumber3;
+	wire [50:0] adderNumber;
+
+	carrySkip12(add1[11:0], dontCare1, temp0[11:0], temp1[11:0], adderNumber1);
+	carrySkip12(add2[11:0], dontCare2, temp2[11:0], temp3[11:0], adderNumber2);
+	carrySkip12( out[11:0], dontCare3,  add1[11:0],  add2[11:0], adderNumber3);
+
+	assign adderNumber = adderNumber1 + adderNumber2 + adderNumber3;
+	assign number = tempNumber + adderNumber;
 endmodule
