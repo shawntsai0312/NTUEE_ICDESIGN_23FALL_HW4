@@ -12,14 +12,14 @@ const aComponent = [
 ]
 
 const bComponent = [
-    [1, 9, 10, 12],         // 0    0.5
-    [1, 7, 8, 9],           // 0.5  1
-    [1, 5, 6, 7, 8, 9, 11], // 1    1.5
-    [1, 3, 8, 9, 10],       // 1.5  2
-    [1, 3, 4, 8, 10],       // 2    2.5
-    [1, 2, 6, 10, 11, 12],  // 2.5  3
-    [1, 2, 4, 5, 6, 10],    // 3    3.5
-    [1, 2, 3, 5, 7, 8]      // 3.5  4
+    [1, 9, 10],                 // 0    0.5
+    [1, 7, 8, 9, 11],           // 0.5  1
+    [1, 5, 6, 7, 8, 9, 10],     // 1    1.5
+    [1, 3, 8, 9, 10, 11],       // 1.5  2
+    [1, 3, 4, 8, 10, 11],       // 2    2.5
+    [1, 2, 6, 9],               // 2.5  3
+    [1, 2, 4, 5, 6, 10],        // 3    3.5
+    [1, 2, 3, 5, 7, 8]          // 3.5  4
 ]
 
 const a = aComponent.map(each => {
@@ -47,9 +47,8 @@ const golDataBin = fs.readFileSync(golFilePath, 'utf-8').split('\n');
 const golDataDec = golDataBin.map(e => binaryToDecimal(e.trim()) / Math.pow(2, 15))
 
 // Convert binary to decimal and write to output file
-const outputFilePath = '../jsResults/OutPractice3.dat';
+const outputFilePath = '../jsResults/OutPractice5.dat';
 var mse = 0;
-var mseGolForm = 0;
 const outputData = inputData.map((line, index) => {
     const decimalX = binaryToDecimal(line.trim()) / 32;
     const absX = Math.abs(decimalX)
