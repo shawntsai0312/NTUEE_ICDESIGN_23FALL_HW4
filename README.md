@@ -49,5 +49,14 @@ nWave &
 |js/sigmoidApproximate.js |jsResults/OutApproximate.dat |0.000546 |directly use secant lines to approximate on [-4,4] |
 |js/sigmoidPractice.js    |jsResults/OutPractice.dat    |0.004392 |1. use the absolute value (if negative, invert bits) <br /> 2. use secant lines to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
 |js/sigmoidPractice2.js   |jsResults/OutPractice2.dat   |0.000537 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use secant lines to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
-|js/sigmoidPractice3.js   |jsResults/OutPractice3.dat   |0.000319 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
-|js/sigmoidPractice4.js   |jsResults/OutPractice4.dat   |0.000277 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
+|js/sigmoidPractice3.js   |jsResults/OutPractice3.dat   |0.000302 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
+|js/sigmoidPractice4.js   |jsResults/OutPractice4.dat   |0.000300 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
+|js/sigmoidPractice5.js   |jsResults/OutPractice5.dat   |0.000295 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
+
+#### Current Result
+* non-pipelined : 
+  * Clock cycle:               9.5 ns
+  * Number of transistors:     3696
+  * Total excution cycle:      256
+  * Approximation Error Score: 1527.0
+  * Performance Score:         8988672.0

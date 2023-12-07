@@ -10,19 +10,12 @@ module sigmoid (
 
 	// Your design
 
-	/*---------------------------------------- CK12 Tester ----------------------------------------*/
-		// wire [11:0] in1, in2, out12;
-		// wire [50:0] ck12NoCNumber;
-		// assign in1 = 12'b1010_0101_1101;
-		// assign in2 = 12'b0101_0101_0011;
-		// carrySkip12NoC(out12, in1, in2, ck12NoCNumber);
-	
 	wire [8:0] abs_x;
-	wire [50:0] handleInputNumber, and2BusNumber;
-
-	wire [7:0] validX;
-	And2Bus #(8) (validX, i_x, i_in_valid, and2BusNumber);
-	handleInput(abs_x, validX, handleInputNumber);
+	wire [50:0] handleInputNumber;
+	handleInput(abs_x, i_x, handleInputNumber);
+	// wire [7:0] testInput;
+	// assign testInput = 8'b11010001;
+	// handleInput(abs_x, testInput, handleInputNumber);
 
 	wire CTRL0, CTRL1, CTRL2;
 	wire [3:0] aValue;
@@ -34,15 +27,12 @@ module sigmoid (
 	assign bValue[11:10] = 2'b01;
 
 	wire [11:0] funcOut;
-	// wire dontCare;
 	wire [11:0] mul;
 	wire [50:0] mulNumber, addNumber;
 	mul8by4(mul[11:0], abs_x[7:0], aValue[3:0], mulNumber);
-	// carrySkip12(funcOut, dontCare, mul, bValue, 1'b0, addNumber);
 	carrySkip12NoC(funcOut, mul, bValue, addNumber);
 
 	wire [10:0] outTemp;
-	wire [10:0] nFuncOut;
 	wire [50:0] Xor2BusNumber;
 
 	// if abs_x[8] => invert funcOut[10:0]
@@ -55,7 +45,7 @@ module sigmoid (
 	REGP #(11) (o_y[14:4], outTemp[10:0], clk, rst_n, dffNumber2);
 	assign o_y[15] = 1'b0;
 	assign o_y[3:0] = 4'b0000;
-	assign number = handleInputNumber + and2BusNumber 
+	assign number = handleInputNumber
 					+ ctrlNumber + aSelectNumber + bSelectNumber
 					+ mulNumber + addNumber
 					+ Xor2BusNumber
@@ -750,13 +740,9 @@ module mul8by4(
 	assign tempNumber = temp0Number + temp1Number + temp2Number + temp3Number;
 
 	wire [11:0] add1, add2;
-	// wire dontCare1, dontCare2, dontCare3;
 	wire [50:0] adderNumber1, adderNumber2, adderNumber3;
 	wire [50:0] adderNumber;
 
-	// carrySkip12(add1[11:0], dontCare1, temp0[11:0], temp1[11:0], 1'b0, adderNumber1);
-	// carrySkip12(add2[11:0], dontCare2, temp2[11:0], temp3[11:0], 1'b0, adderNumber2);
-	// carrySkip12( out[11:0], dontCare3,  add1[11:0],  add2[11:0], 1'b0, adderNumber3);
 	carrySkip12NoC(add1[11:0], temp0[11:0], temp1[11:0], adderNumber1);
 	carrySkip12NoC(add2[11:0], temp2[11:0], temp3[11:0], adderNumber2);
 	carrySkip12NoC( out[11:0],  add1[11:0],  add2[11:0], adderNumber3);
