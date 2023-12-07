@@ -9,6 +9,7 @@ source ./tool.sh
 #### How To Run
 ```shell
 ./run.sh
+./debug.sh
 ```
 
 #### How To Check Waveform
