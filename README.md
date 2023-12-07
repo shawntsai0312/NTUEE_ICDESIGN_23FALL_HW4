@@ -60,3 +60,9 @@ nWave &
   * Total excution cycle:      256
   * Approximation Error Score: 1527.0
   * Performance Score:         8988672.0
+* pipelined :
+  * Clock cycle:               5.4 ns
+  * Number of transistors:     5100
+  * Total excution cycle:      258
+  * Approximation Error Score: 1527.0
+  * Performance Score:         7205320.0
