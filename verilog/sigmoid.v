@@ -17,10 +17,6 @@ module sigmoid (
 	And2Bus #(8) (validX, i_x, i_in_valid, and2BusNumber);
 	handleInput(abs_x, validX, handleInputNumber);
 
-	// wire [7:0] inTest;
-	// assign inTest = 8'b11000000;
-	// handleInput(abs_x, inTest, handleInputNumber);
-
 	wire CTRL0, CTRL1, CTRL2;
 	wire [3:0] aValue;
 	wire [11:0] bValue;
@@ -37,23 +33,24 @@ module sigmoid (
 	mul8by4(mul[11:0], abs_x[7:0], aValue[3:0], mulNumber);
 	carrySkip12(funcOut, dontCare, mul, bValue, 1'b0, addNumber);
 
-	wire [15:0] outTemp;
+	wire [10:0] outTemp;
 	wire [10:0] nFuncOut;
-	wire [50:0] IvBusNumber, Mux2BusNumber;
+	wire [50:0] Xor2BusNumber;
 
-	// if abs_x[8] => invert funcOut[10:0] and assign to 
-	IvBus #(11) (nFuncOut[10:0], funcOut[10:0], IvBusNumber);
-	Mux2Bus #(11) (outTemp[14:4], funcOut[10:0], nFuncOut[10:0], abs_x[8], Mux2BusNumber);
-	assign outTemp[15] = 1'b0;
-	assign outTemp[3:0] = 4'b0;
+	// if abs_x[8] => invert funcOut[10:0]
+	// funcOut[11] will always be 0 in our case, so just don't care
+	// => funcOut[10:0] ^ abs_x[8]
+	Xor2Bus #(11) (outTemp[10:0], funcOut[10:0], abs_x[8], Xor2BusNumber);
 
 	wire [50:0] dffNumber1, dffNumber2;
 	FD2(o_out_valid, i_in_valid, clk, rst_n, dffNumber1);
-	REGP #(16) (o_y, outTemp, clk, rst_n, dffNumber2);
+	REGP #(11) (o_y[14:4], outTemp[10:0], clk, rst_n, dffNumber2);
+	assign o_y[15] = 1'b0;
+	assign o_y[3:0] = 4'b0000;
 	assign number = handleInputNumber + and2BusNumber 
 					+ ctrlNumber + aSelectNumber + bSelectNumber
 					+ mulNumber + addNumber
-					+ IvBusNumber + Mux2BusNumber
+					+ Xor2BusNumber
 					+ dffNumber1 + dffNumber2;
 endmodule
 
@@ -228,6 +225,36 @@ module And2Bus#(
 	assign number = sum;
 endmodule
 
+module Xor2Bus#(
+		parameter BW = 2
+	)(
+		output [BW-1:0] out,
+		input  [BW-1:0] in1,
+		input  in2,
+		output [  50:0] number
+	);
+
+	wire [50:0] numbers [0:BW-1];
+
+	genvar i;
+	generate
+		for (i=0; i<BW; i=i+1) begin
+			EO xor2(out[i], in1[i], in2, numbers[i]);
+		end
+	endgenerate
+
+	//sum number of transistors
+	reg [50:0] sum;
+	integer j;
+	always @(*) begin
+		sum = 0;
+		for (j=0; j<BW; j=j+1) begin 
+			sum = sum + numbers[j];
+		end
+	end
+	assign number = sum;
+endmodule
+
 module Mux2Bus#(
 		parameter BW = 2
 	)(
@@ -306,7 +333,7 @@ module handleInput(
 	// out[8] = in[7]
 	assign out[8] = in[7];
 
-	// out[7:0] = in[7:0]' + 1
+	// if negative, out[7:0] = in[7:0]' + 1
 	wire [7:0] nIn;
 	wire [50:0] IvBusNumber;
 	IvBus #(8) (nIn[7:0], in[7:0], IvBusNumber);

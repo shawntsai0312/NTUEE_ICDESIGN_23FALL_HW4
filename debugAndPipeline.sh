@@ -1,1 +1,0 @@
-vcs verilog/tb.v verilog/sigmoid.v verilog/lib.v -full64 -R -v2005 -debug_access+all +v2k+define+DEBUG+PIPELINE
