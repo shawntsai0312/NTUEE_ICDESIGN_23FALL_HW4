@@ -152,10 +152,12 @@ module sigmoid (
 		wire [14:0] outTemp;
 		wire [50:0] xor2BusNumber, mux2BusNumber;
 		Xor2Bus #(11) (outTemp[14:4], d45_funcOut[10:0], d45_sign, xor2BusNumber);
-		Mux2Bus #(4) (outTemp[3:0], 4'b0011, 4'b1011, d45_sign, mux2BusNumber);
+		// Mux2Bus #(4) (outTemp[3:0], 4'b0011, 4'b1011, d45_sign, mux2BusNumber);
+		assign outTemp[2:0] = 3'b011;
+		assign outTemp[3] = d45_sign;
 
 		wire [50:0] stage5Number;
-		assign stage5Number = xor2BusNumber + mux2BusNumber;
+		assign stage5Number = xor2BusNumber;
 
 	/*------------------------------------- Stage 5 --> Output -------------------------------------*/
 		wire [50:0] outputValidFFNumber, outputFFNumber;
