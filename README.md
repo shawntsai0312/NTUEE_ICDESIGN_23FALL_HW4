@@ -53,9 +53,9 @@ nWave &
 |js/sigmoidPractice4.js   |jsResults/OutPractice4.dat   |0.000300 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
 |js/sigmoidPractice5.js   |jsResults/OutPractice5.dat   |0.000280 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits <br /> 4. if negative, y[3:0] = 1011, if positive, y[3:0] = 0011|
 
-#### Current Result
+#### Different Pipeline Stages Result
 |Pipeline Stage Number |Clock Cycle |Number of Transistors |Total Excution Cycle |Approximation Error Score |Performance Score |
 |----------------------|------------|----------------------|---------------------|--------------------------|------------------|
-|0                     |9.5 ns      |3696                  |256                  |1527.0                    |8988672.0         |
+|1                     |9.5 ns      |3696                  |256                  |1527.0                    |8988672.0         |
 |3                     |5.4 ns      |5100                  |258                  |1527.0                    |7205320.0         |
 |6                     |3.9 ns      |6490                  |261                  |1508.0                    |6606171.0         |
