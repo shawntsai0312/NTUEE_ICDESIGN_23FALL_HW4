@@ -601,6 +601,53 @@ module carrySkip4NoB(
 	assign number = Gknumber + Snumber + aAndNumber + muxNumber;
 endmodule
 
+module carrySkip4NoBCin1(
+		output [3:0] S,
+		output Cout,
+		input [3:0] A,
+		output [50:0] number
+	);
+	/*------------------------------------------- Gk0 -------------------------------------------*/
+		wire G10, G20, G30, tempCout;
+		wire [50:0] G20number, G30number, G40number;
+		wire [50:0] Gknumber;
+
+		// G10
+		assign G10 = A[0];
+
+		// G20
+		AN2(G20, G10, A[1], G20number);
+
+		// G30
+		AN2(G30, G20, A[2], G30number);
+
+		// tempCout
+		AN2(tempCout, G30, A[3], G40number);
+
+		assign Gknumber = G20number + G30number + G40number;
+
+	/*------------------------------------------ S[3:0] ------------------------------------------*/
+		wire [50:0] S0number, S1number, S2number, S3number;
+		wire [50:0] Snumber;
+
+		// S[3:0]
+		IV(S[0], 	  A[0], S0number);
+		EO(S[1], G10, A[1], S1number);
+		EO(S[2], G20, A[2], S2number);
+		EO(S[3], G30, A[3], S3number);
+		
+		assign Snumber = S0number + S1number + S2number + S3number;
+
+	/*------------------------------------------ Cout ------------------------------------------*/
+		wire aAnd;
+		wire [50:0] aAndNumber, orNumber;
+
+		AN4(aAnd, A[0], A[1], A[2], A[3], aAndNumber);
+		OR2(Cout, tempCout, aAnd, orNumber);
+
+	assign number = Gknumber + Snumber + aAndNumber + orNumber;
+endmodule
+
 module carrySkip4NoCin(
 		output [3:0] S,
 		output Cout,
@@ -756,8 +803,9 @@ module addOne(
 	wire carryBetween, carryOut;
 	wire [50:0] number1, number2;
 
-	carrySkip4NoB(out[3:0], carryBetween, in[3:0],         1'b1, number1);
-	carrySkip4NoB(out[7:4],     carryOut, in[7:4], carryBetween, number2);
+	// carrySkip4NoB(out[3:0], carryBetween, in[3:0],         1'b1, number1);
+	carrySkip4NoBCin1(out[3:0], carryBetween, in[3:0],               number1);
+	carrySkip4NoB(    out[7:4],     carryOut, in[7:4], carryBetween, number2);
 
 	assign number = number1 + number2;
 endmodule
