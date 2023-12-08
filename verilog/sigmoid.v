@@ -761,41 +761,30 @@ module b10bitsSelector(
 				number);
 endmodule
 
-module mul8by4(
-		output [11:0] out,
-		input  [7:0] in8,
-		input  [3:0] in4,
+module carrySkip8NoCin(
+		output [11:0] S,
+		output Cout,
+		input [11:0] A,
+		input [11:0] B,
 		output [50:0] number
 	);
-	wire [11:0] temp0, temp1, temp2, temp3;
-	wire [50:0] temp0Number, temp1Number, temp2Number, temp3Number;
-	wire [50:0] tempNumber;
+	wire carryBetween;
+	wire [50:0] number1, number2;
+	carrySkip4NoCin( S[ 3:0], carryBetween, A[ 3:0], B[ 3:0],                number1);
+	carrySkip4(      S[ 7:4],         Cout, A[ 7:4], B[ 7:4], carryBetween1, number2);
+	assign number = number1 + number2;
+endmodule
 
-	And2Bus #(8) (temp0[7:0], in8[7:0], in4[0], temp0Number);
-	assign temp0[11:8] = 4'b0000;
-
-	And2Bus #(8) (temp1[8:1], in8[7:0], in4[1], temp1Number);
-	assign temp1[11:9] = 3'b000;
-	assign temp1[0] = 1'b0;
-
-	And2Bus #(8) (temp2[9:2], in8[7:0], in4[2], temp2Number);
-	assign temp2[11:10] = 2'b00;
-	assign temp2[1:0] = 2'b00;
-
-	And2Bus #(8) (temp3[10:3], in8[7:0], in4[3], temp3Number);
-	assign temp3[11] = 1'b0;
-	assign temp3[2:0] = 3'b000;
-
-	assign tempNumber = temp0Number + temp1Number + temp2Number + temp3Number;
-
-	wire [11:0] add1, add2;
-	wire [50:0] adderNumber1, adderNumber2, adderNumber3;
-	wire [50:0] adderNumber;
-
-	carrySkip12NoC(add1[11:0], temp0[11:0], temp1[11:0], adderNumber1);
-	carrySkip12NoC(add2[11:0], temp2[11:0], temp3[11:0], adderNumber2);
-	carrySkip12NoC( out[11:0],  add1[11:0],  add2[11:0], adderNumber3);
-
-	assign adderNumber = adderNumber1 + adderNumber2 + adderNumber3;
-	assign number = tempNumber + adderNumber;
+module twoBitsaddOneBit(
+		output [1:0] S,
+		input [1:0] A,
+		input B,
+		output [50:0] number
+	);
+	wire [50:0] xorNumber, nand1Number, nand2Number;
+	wire temp;
+	EO(S[0], A[0], B, xorNumber);
+	ND2(temp, A[0], B, nand1Number);
+	ND2(S[1], A[1], temp, nand2Number);
+	assign number = xorNumber + nand1Number + nand2Number;
 endmodule
