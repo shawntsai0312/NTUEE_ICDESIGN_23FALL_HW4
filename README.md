@@ -54,27 +54,8 @@ nWave &
 |js/sigmoidPractice5.js   |jsResults/OutPractice5.dat   |0.000280 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits <br /> 4. if negative, y[3:0] = 1011, if positive, y[3:0] = 0011|
 
 #### Current Result
-|Pipeline Stage Number |Clock cycle |Number of transistors |Total excution cycle |Approximation Error Score |Performance Score |
+|Pipeline Stage Number |Clock Cycle |Number of Transistors |Total Excution Cycle |Approximation Error Score |Performance Score |
 |----------------------|------------|----------------------|---------------------|--------------------------|------------------|
 |0                     |9.5 ns      |3696                  |256                  |1527.0                    |8988672.0         |
 |3                     |5.4 ns      |5100                  |258                  |1527.0                    |7205320.0         |
 |6                     |3.9 ns      |6490                  |261                  |1508.0                    |6606171.0         |
-
-* non-pipelined : 
-  * Clock cycle:               9.5 ns
-  * Number of transistors:     3696
-  * Total excution cycle:      256
-  * Approximation Error Score: 1527.0
-  * Performance Score:         8988672.0
-* pipelined 3 stage :
-  * Clock cycle:               5.4 ns
-  * Number of transistors:     5100
-  * Total excution cycle:      258
-  * Approximation Error Score: 1527.0
-  * Performance Score:         7205320.0
-* pipelined 6 stage :
-  * Clock cycle:               3.9 ns
-  * Number of transistors:     6490
-  * Total excution cycle:      261
-  * Approximation Error Score: 1508.0
-  * Performance Score:         6606171.0
