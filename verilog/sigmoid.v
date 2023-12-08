@@ -149,12 +149,11 @@ module sigmoid (
 
 	/*------------------------------------------ Stage 5 ------------------------------------------*/
 		// output handling
-		wire [14:0] outTemp;
+		wire [11:0] outTemp;
 		wire [50:0] xor2BusNumber, mux2BusNumber;
-		Xor2Bus #(11) (outTemp[14:4], d45_funcOut[10:0], d45_sign, xor2BusNumber);
+		Xor2Bus #(11) (outTemp[11:1], d45_funcOut[10:0], d45_sign, xor2BusNumber);
 		// Mux2Bus #(4) (outTemp[3:0], 4'b0011, 4'b1011, d45_sign, mux2BusNumber);
-		assign outTemp[2:0] = 3'b011;
-		assign outTemp[3] = d45_sign;
+		assign outTemp[0] = d45_sign;
 
 		wire [50:0] stage5Number;
 		assign stage5Number = xor2BusNumber;
@@ -164,7 +163,8 @@ module sigmoid (
 		wire [50:0] stage5OutFFNumber;
 
 		FD2 outputValidFF(o_out_valid, d45_valid, clk, rst_n, outputValidFFNumber);
-		REGP #(15) outputFF(o_y[14:0], outTemp[14:0], clk, rst_n, outputFFNumber);
+		REGP #(12) outputFF(o_y[14:3], outTemp[11:0], clk, rst_n, outputFFNumber);
+		assign o_y[2:0] = 3'b011;
 		assign o_y[15] = 1'b0;
 
 		assign stage5OutFFNumber = outputValidFFNumber + outputFFNumber;
