@@ -79,21 +79,21 @@ module sigmoid (
 		wire [50:0] addNumber;
 		carrySkip12NoC(funcOut, d_mul, d_d_bValue, addNumber);
 
-		wire [10:0] outTemp;
-		wire [50:0] xor2BusNumber;
-		Xor2Bus #(11) (outTemp[10:0], funcOut[10:0], d_d_sign, xor2BusNumber);
+		wire [14:0] outTemp;
+		wire [50:0] xor2BusNumber, mux2BusNumber;
+		Xor2Bus #(11) (outTemp[14:4], funcOut[10:0], d_d_sign, xor2BusNumber);
+		Mux2Bus #(4) (outTemp[3:0], 4'b0011, 4'b1011, d_d_sign, mux2BusNumber);
 
 		wire [50:0] stage3Number;
-		assign stage3Number = addNumber + xor2BusNumber;
+		assign stage3Number = addNumber + xor2BusNumber + mux2BusNumber;
 
 	/*------------------------------------- Stage 3 --> Output -------------------------------------*/
 		wire [50:0] outputValidFFNumber, outputFFNumber;
 		wire [50:0] stage3OutFFNumber;
 
 		FD2 outputValidFF(o_out_valid, d_d_valid, clk, rst_n, outputValidFFNumber);
-		REGP #(11) outputFF(o_y[14:4], outTemp[10:0], clk, rst_n, outputFFNumber);
+		REGP #(15) outputFF(o_y[14:0], outTemp[14:0], clk, rst_n, outputFFNumber);
 		assign o_y[15] = 1'b0;
-		assign o_y[3:0] = 4'b0000;
 
 		assign stage3OutFFNumber = outputValidFFNumber + outputFFNumber;
 

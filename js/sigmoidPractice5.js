@@ -68,9 +68,8 @@ const outputData = inputData.map((line, index) => {
     const decimalY = golDataDec[index]
     let approximateY = a[Math.floor(absX * 2)] * absX + b[Math.floor(absX * 2)]
     if (absX == 4) approximateY = a[7] * absX + b[7]
-    if (line.trim()[0] === '1') {
-        approximateY = 1 - Math.pow(2, -11) - approximateY;
-    }
+    if (line.trim()[0] === '1') approximateY = 1 - Math.pow(2, -11) - approximateY + Math.pow(2, -12) + Math.pow(2, -14) + Math.pow(2, -15)
+    else approximateY += Math.pow(2, -14) + Math.pow(2, -15)
     const error = approximateY - decimalY
     mse += error * error
     // console.log(a[Math.floor(decimalX * 2) + 8], b[Math.floor(decimalX * 2) + 8])

@@ -51,7 +51,7 @@ nWave &
 |js/sigmoidPractice2.js   |jsResults/OutPractice2.dat   |0.000537 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use secant lines to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
 |js/sigmoidPractice3.js   |jsResults/OutPractice3.dat   |0.000302 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
 |js/sigmoidPractice4.js   |jsResults/OutPractice4.dat   |0.000300 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
-|js/sigmoidPractice5.js   |jsResults/OutPractice5.dat   |0.000295 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits|
+|js/sigmoidPractice5.js   |jsResults/OutPractice5.dat   |0.000280 |1. use the absolute value (if negative, invert bits and add 1) <br /> 2. use self-defined constants to approximate on [0,4] <br /> 3. if input is negative, invert output bits <br /> 4. if negative, y[3:0] = 1011, if positive, y[3:0] = 0011|
 
 #### Current Result
 * non-pipelined : 
