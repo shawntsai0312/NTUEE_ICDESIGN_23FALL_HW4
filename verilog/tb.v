@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`define CYCLE 5.4
+`define CYCLE 3.9
 `define PATTERN 256
 
 module tb;

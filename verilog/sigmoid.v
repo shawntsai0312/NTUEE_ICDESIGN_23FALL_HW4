@@ -9,95 +9,170 @@ module sigmoid (
 	);
 
 	// Your design
-
-	/*------------------------------------------ Stage 1 ------------------------------------------*/
+	/*------------------------------------------ Stage 0 ------------------------------------------*/
 		// input handling
-		// getting a, b
 		wire sign;
 		wire [7:0] abs_x;
-		wire [50:0] handleInputNumber;
+		wire [50:0] stage0Number;
 
-		handleInput(abs_x, sign, i_x, handleInputNumber);
-
+		handleInput(abs_x, sign, i_x, stage0Number);
 		// wire [7:0] testInput;
-		// assign testInput = 8'b11010001;
-		// handleInput(abs_x, testInput, handleInputNumber);
+		// assign testInput = 8'b1000_0000;
+		// handleInput(abs_x, sign, testInput, handleInputNumber);
+
+	/*--------------------------------------- Stage 0 --> 1 ---------------------------------------*/
+		wire d01_sign, d01_valid;
+		wire [7:0] d01_abs_x;
+		wire [50:0] d01_signFFNumber, d01_validFFNumber, d01_xFFNumber;
+		wire [50:0] stage01FFNumber;
+
+		FD2 d01_signFF(d01_sign, sign, clk, rst_n, d01_signFFNumber);
+		FD2 d01_validFF(d01_valid, i_in_valid, clk, rst_n, d01_validFFNumber);
+		REGP #(8) d01_xFF(d01_abs_x, abs_x, clk, rst_n, d01_xFFNumber);
+
+		assign stage01FFNumber = d01_signFFNumber + d01_validFFNumber + d01_xFFNumber;
+
+	/*------------------------------------------ Stage 1 ------------------------------------------*/
+		// getting a, b
 
 		wire CTRL0, CTRL1, CTRL2;
 		wire [3:0] aValue;
 		wire [11:0] bValue;
 		wire [50:0] ctrlNumber, aSelectNumber, bSelectNumber;
 
-		Mux2Bus #(3) ({CTRL0, CTRL1, CTRL2}, abs_x[6:4], 3'b111, abs_x[7], ctrlNumber);
+		Mux2Bus #(3) ({CTRL0, CTRL1, CTRL2}, d01_abs_x[6:4], 3'b111, d01_abs_x[7], ctrlNumber);
 		a4bitsSelector( aValue[3:0], CTRL0, CTRL1, CTRL2, aSelectNumber);
 		b10bitsSelector(bValue[9:0], CTRL0, CTRL1, CTRL2, bSelectNumber);
 		assign bValue[11:10] = 2'b01;
 
 		wire [50:0] stage1Number;
-		assign stage1Number = handleInputNumber + ctrlNumber + aSelectNumber +bSelectNumber;
+		assign stage1Number = ctrlNumber + aSelectNumber + bSelectNumber;
 
 	/*--------------------------------------- Stage 1 --> 2 ---------------------------------------*/
-		wire d_sign, d_valid;
-		wire [7:0] d_abs_x;
-		wire [3:0] d_aValue;
-		wire [11:0] d_bValue;
-		wire [50:0] signFFNumber, validFFNumber, xFFNumber, aFFNumber, bFFNumber;
+		wire d12_sign, d12_valid;
+		wire [7:0] d12_abs_x;
+		wire [3:0] d12_aValue;
+		wire [11:0] d12_bValue;
+		wire [50:0] d12_signFFNumber, d12_validFFNumber, d12_xFFNumber, d12_aFFNumber, d12_bFFNumber;
 		wire [50:0] stage12FFNumber;
 
-		FD2 signFF(d_sign, sign, clk, rst_n, signFFNumber);
-		FD2 validFF(d_valid, i_in_valid, clk, rst_n, validFFNumber);
-		REGP #(8) xFF(d_abs_x, abs_x, clk, rst_n, xFFNumber);
-		REGP #(4) aFF(d_aValue, aValue, clk, rst_n, aFFNumber);
-		REGP #(12) bFF(d_bValue, bValue, clk, rst_n, bFFNumber);
+		FD2 d12_signFF(d12_sign, d01_sign, clk, rst_n, d12_signFFNumber);
+		FD2 d12_validFF(d12_valid, d01_valid, clk, rst_n, d12_validFFNumber);
+		REGP #(8) d12_xFF(d12_abs_x, d01_abs_x, clk, rst_n, d12_xFFNumber);
+		REGP #(4) d12_aFF(d12_aValue, aValue, clk, rst_n, d12_aFFNumber);
+		REGP #(12) d12_bFF(d12_bValue, bValue, clk, rst_n, d12_bFFNumber);
 
-		assign stage12FFNumber = signFFNumber + validFFNumber + xFFNumber + aFFNumber + bFFNumber;
+		assign stage12FFNumber = d12_signFFNumber + d12_validFFNumber + d12_xFFNumber + d12_aFFNumber + d12_bFFNumber;
 
 	/*------------------------------------------ Stage 2 ------------------------------------------*/
-		// multiplication
-		wire [11:0] mul;
-		wire [50:0] stage2Number;
+		// multiplication 1
+		wire [7:0] abs_x0, abs_x1, abs_x2, abs_x3;
+		wire [50:0] andNumber0, andNumber1, andNumber2, andNumber3;
+		wire [50:0] andNumber;
 
-		mul8by4(mul[11:0], d_abs_x[7:0], d_aValue[3:0], stage2Number);
+		And2Bus #(8) (abs_x0, d12_abs_x, d12_aValue[0], andNumber0);
+		And2Bus #(8) (abs_x1, d12_abs_x, d12_aValue[1], andNumber1);
+		And2Bus #(8) (abs_x2, d12_abs_x, d12_aValue[2], andNumber2);
+		And2Bus #(8) (abs_x3, d12_abs_x, d12_aValue[3], andNumber3);
+		assign andNumber = andNumber0 + andNumber1 + andNumber2 + andNumber3;
+
+		wire [9:0] add01, add23;
+		wire [50:0] ck8Number01, ck8Number23;
+		wire [50:0] ck8Number;
+
+		assign add01[0] = abs_x0[0];
+		assign add23[0] = abs_x2[0];
+		carrySkip8NoCin(add01[8:1], add01[9], {1'b0, abs_x0[7:1]}, abs_x1[7:0], ck8Number01);
+		carrySkip8NoCin(add23[8:1], add23[9], {1'b0, abs_x2[7:1]}, abs_x3[7:0], ck8Number23);
+		assign ck8Number = ck8Number01 + ck8Number23;
+		
+		wire [50:0] stage2Number;
+		assign stage2Number = andNumber + ck8Number;
 
 	/*--------------------------------------- Stage 2 --> 3 ---------------------------------------*/
-		wire d_d_sign, d_d_valid;
-		wire [11:0] d_d_bValue, d_mul;
-		wire [50:0] d_signFFNumber, d_validFFNumber, d_bFFNumber, mulFFNumber;
+		wire d23_sign, d23_valid;
+		wire [9:0] d23_add01, d23_add23;
+		wire [11:0] d23_bValue;
+		wire [50:0] d23_signFFNumber, d23_validFFNumber, d23_bFFNumber, d23_add01FFNumber, d23_add23FFNumber;
 		wire [50:0] stage23FFNumber;
 
-		FD2 d_signFF(d_d_sign, d_sign, clk, rst_n, d_signFFNumber);
-		FD2 d_validFF(d_d_valid, d_valid, clk, rst_n, d_validFFNumber);
-		REGP #(12) d_bFF(d_d_bValue, d_bValue, clk, rst_n, d_bFFNumber);
-		REGP #(12) mulFF(d_mul, mul, clk, rst_n, mulFFNumber);
+		FD2 d23_signFF(d23_sign, d12_sign, clk, rst_n, d23_signFFNumber);
+		FD2 d32_validFF(d23_valid, d12_valid, clk, rst_n, d23_validFFNumber);
+		REGP #(12) d23_bFF(d23_bValue, d12_bValue, clk, rst_n, d23_bFFNumber);
+		REGP #(10) d23_add01FF(d23_add01, add01, clk, rst_n, d23_add01FFNumber);
+		REGP #(10) d23_add23FF(d23_add23, add23, clk, rst_n, d23_add23FFNumber);
 		
-		assign stage23FFNumber = d_signFFNumber + d_validFFNumber + d_bFFNumber + mulFFNumber;
+		assign stage23FFNumber = d23_signFFNumber + d23_validFFNumber + d23_bFFNumber + d23_add01FFNumber + d23_add23FFNumber;
 
 	/*------------------------------------------ Stage 3 ------------------------------------------*/
-		// addition
-		// output handling
-		wire [11:0] funcOut;
-		wire [50:0] addNumber;
-		carrySkip12NoC(funcOut, d_mul, d_d_bValue, addNumber);
-
-		wire [14:0] outTemp;
-		wire [50:0] xor2BusNumber, mux2BusNumber;
-		Xor2Bus #(11) (outTemp[14:4], funcOut[10:0], d_d_sign, xor2BusNumber);
-		Mux2Bus #(4) (outTemp[3:0], 4'b0011, 4'b1011, d_d_sign, mux2BusNumber);
+		// multiplication 2
+		wire [11:0] mul;
+		wire carry;
+		wire [50:0] ck8Number0123, twoBitsaddOneBitNumber;
+		assign mul[1:0] = d23_add01[1:0];
+		carrySkip8NoCin(mul[9:2], carry, d23_add01[9:2], d23_add23[7:0], ck8Number0123);
+		twoBitsaddOneBit(mul[11:10], d23_add23[9:8], carry, twoBitsaddOneBitNumber);
 
 		wire [50:0] stage3Number;
-		assign stage3Number = addNumber + xor2BusNumber + mux2BusNumber;
+		assign stage3Number = ck8Number0123 + twoBitsaddOneBitNumber;
 
-	/*------------------------------------- Stage 3 --> Output -------------------------------------*/
+	/*--------------------------------------- Stage 3 --> 4 ---------------------------------------*/
+		wire d34_sign, d34_valid;
+		wire [11:0] d34_bValue, d34_mul;
+		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_bFFNumber, d34_mulFFNumber;
+		wire [50:0] stage34FFNumber;
+
+		FD2 d34_signFF(d34_sign, d23_sign, clk, rst_n, d34_signFFNumber);
+		FD2 d34_validFF(d34_valid, d23_valid, clk, rst_n, d34_validFFNumber);
+		REGP #(12) d34_bFF(d34_bValue, d23_bValue, clk, rst_n, d34_bFFNumber);
+		REGP #(12) d34_mulFF(d34_mul, mul, clk, rst_n, d34_mulFFNumber);
+		
+		assign stage34FFNumber = d34_signFFNumber + d34_validFFNumber + d34_bFFNumber + d34_mulFFNumber;
+
+	/*------------------------------------------ Stage 4 ------------------------------------------*/
+		// addition
+		wire [11:0] funcOut;
+		wire [50:0] stage4Number;
+		carrySkip12NoC(funcOut, d34_mul, d34_bValue, stage4Number);
+
+	/*--------------------------------------- Stage 4 --> 5 ---------------------------------------*/
+		wire d45_sign, d45_valid;
+		wire [11:0] d45_funcOut;
+		wire [50:0] d45_signFFNumber, d45_validFFNumber, d45_funcOutFFNumber;
+		wire [50:0] stage45FFNumber;
+
+		FD2 d45_signFF(d45_sign, d34_sign, clk, rst_n, d45_signFFNumber);
+		FD2 d45_validFF(d45_valid, d34_valid, clk, rst_n, d45_validFFNumber);
+		REGP #(12) d45_mulFF(d45_funcOut, funcOut, clk, rst_n, d45_funcOutFFNumber);
+		
+		assign stage45FFNumber = d45_signFFNumber + d45_validFFNumber + d45_funcOutFFNumber;
+
+	/*------------------------------------------ Stage 5 ------------------------------------------*/
+		// output handling
+		wire [14:0] outTemp;
+		wire [50:0] xor2BusNumber, mux2BusNumber;
+		Xor2Bus #(11) (outTemp[14:4], d45_funcOut[10:0], d45_sign, xor2BusNumber);
+		Mux2Bus #(4) (outTemp[3:0], 4'b0011, 4'b1011, d45_sign, mux2BusNumber);
+
+		wire [50:0] stage5Number;
+		assign stage5Number = xor2BusNumber + mux2BusNumber;
+
+	/*------------------------------------- Stage 5 --> Output -------------------------------------*/
 		wire [50:0] outputValidFFNumber, outputFFNumber;
-		wire [50:0] stage3OutFFNumber;
+		wire [50:0] stage5OutFFNumber;
 
-		FD2 outputValidFF(o_out_valid, d_d_valid, clk, rst_n, outputValidFFNumber);
+		FD2 outputValidFF(o_out_valid, d45_valid, clk, rst_n, outputValidFFNumber);
 		REGP #(15) outputFF(o_y[14:0], outTemp[14:0], clk, rst_n, outputFFNumber);
 		assign o_y[15] = 1'b0;
 
-		assign stage3OutFFNumber = outputValidFFNumber + outputFFNumber;
+		assign stage5OutFFNumber = outputValidFFNumber + outputFFNumber;
 
-		assign number = stage1Number + stage12FFNumber + stage2Number + stage23FFNumber + stage3Number + stage3OutFFNumber;
+		assign number = stage0Number + stage01FFNumber
+					  + stage1Number + stage12FFNumber
+					  + stage2Number + stage23FFNumber
+					  + stage3Number + stage34FFNumber
+					  + stage4Number + stage45FFNumber
+					  + stage5Number + stage5OutFFNumber;
 endmodule
 
 module ND8(
@@ -762,16 +837,16 @@ module b10bitsSelector(
 endmodule
 
 module carrySkip8NoCin(
-		output [11:0] S,
+		output [7:0] S,
 		output Cout,
-		input [11:0] A,
-		input [11:0] B,
+		input [7:0] A,
+		input [7:0] B,
 		output [50:0] number
 	);
 	wire carryBetween;
 	wire [50:0] number1, number2;
-	carrySkip4NoCin( S[ 3:0], carryBetween, A[ 3:0], B[ 3:0],                number1);
-	carrySkip4(      S[ 7:4],         Cout, A[ 7:4], B[ 7:4], carryBetween1, number2);
+	carrySkip4NoCin( S[3:0], carryBetween, A[3:0], B[3:0],               number1);
+	carrySkip4(      S[7:4],         Cout, A[7:4], B[7:4], carryBetween, number2);
 	assign number = number1 + number2;
 endmodule
 
