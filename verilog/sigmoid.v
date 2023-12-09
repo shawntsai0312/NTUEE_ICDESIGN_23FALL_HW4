@@ -13,9 +13,11 @@ module sigmoid (
 		// input handling
 		wire sign;
 		wire [7:0] abs_x;
+		wire [50:0] handleInputNumber;
 		wire [50:0] stage0Number;
 
-		handleInput(abs_x, sign, i_x, stage0Number);
+		handleInput(abs_x, sign, i_x, handleInputNumber);
+		assign stage0Number = handleInputNumber;
 		// wire [7:0] testInput;
 		// assign testInput = 8'b1000_0000;
 		// handleInput(abs_x, sign, testInput, handleInputNumber);
@@ -33,141 +35,149 @@ module sigmoid (
 		assign stage01FFNumber = d01_signFFNumber + d01_validFFNumber + d01_xFFNumber;
 
 	/*------------------------------------------ Stage 1 ------------------------------------------*/
-		// getting a, b
+		// getting a and special
+		wire special;
 		wire CTRL0, CTRL1, CTRL2;
 		wire nCTRL0, nCTRL1, nCTRL2;
 		wire [3:0] aValue;
-		wire [9:0] bValue;
-		wire [50:0] ctrlNumber, aSelectNumber, bSelectNumber, ivCTRLNumber;
+		wire [50:0] andSpecialNumber, aSelectNumber, ivCTRLNumber;
 
-		Mux2Bus #(3) ({CTRL0, CTRL1, CTRL2}, d01_abs_x[6:4], 3'b111, d01_abs_x[7], ctrlNumber);
+		AN2(special, d01_sign, d01_abs_x[7], andSpecialNumber);
+		assign {CTRL0, CTRL1, CTRL2} = d01_abs_x[6:4];
 		IvBus #(3) ({nCTRL0, nCTRL1, nCTRL2}, {CTRL0, CTRL1, CTRL2}, ivCTRLNumber);
 		// a4bitsSelector( aValue[3:0], CTRL0, CTRL1, CTRL2, aSelectNumber);
 		a4bitsSelectorEnhanced(aValue[3:0], CTRL0, nCTRL0, CTRL1, nCTRL1, CTRL2, nCTRL2, aSelectNumber);
-		// b10bitsSelector(bValue[9:0], CTRL0, CTRL1, CTRL2, bSelectNumber);
-		b10bitsSelectorEnhanced(bValue[9:0], CTRL0, nCTRL0, CTRL1, nCTRL1, CTRL2, nCTRL2, bSelectNumber);
 
 		wire [50:0] stage1Number;
-		assign stage1Number = ctrlNumber + aSelectNumber + bSelectNumber + ivCTRLNumber;
+		assign stage1Number = andSpecialNumber + aSelectNumber + ivCTRLNumber;
 
 	/*--------------------------------------- Stage 1 --> 2 ---------------------------------------*/
-		wire d12_sign, d12_valid;
+		wire d12_sign, d12_valid, d12_special;
+		wire d12_CTRL0, d12_CTRL1, d12_CTRL2;
 		wire [7:0] d12_abs_x;
 		wire [3:0] d12_aValue;
-		wire [9:0] d12_bValue;
-		wire [50:0] d12_signFFNumber, d12_validFFNumber, d12_xFFNumber, d12_aFFNumber, d12_bFFNumber;
+		wire [50:0] d12_signFFNumber, d12_validFFNumber, d12_specialFFNumber, d12_ctrlFFNumber, d12_xFFNumber, d12_aFFNumber;
 		wire [50:0] stage12FFNumber;
 
 		FD2 d12_signFF(d12_sign, d01_sign, clk, rst_n, d12_signFFNumber);
 		FD2 d12_validFF(d12_valid, d01_valid, clk, rst_n, d12_validFFNumber);
+		FD2 d12_specialFF(d12_special, special, clk, rst_n, d12_specialFFNumber);
+		REGP #(3) d12_ctrlFF({d12_CTRL0, d12_CTRL1, d12_CTRL2}, {CTRL0, CTRL1, CTRL2}, clk, rst_n, d12_ctrlFFNumber);
 		REGP #(8) d12_xFF(d12_abs_x, d01_abs_x, clk, rst_n, d12_xFFNumber);
 		REGP #(4) d12_aFF(d12_aValue, aValue, clk, rst_n, d12_aFFNumber);
-		REGP #(10) d12_bFF(d12_bValue, bValue, clk, rst_n, d12_bFFNumber);
 
-		assign stage12FFNumber = d12_signFFNumber + d12_validFFNumber + d12_xFFNumber + d12_aFFNumber + d12_bFFNumber;
+		assign stage12FFNumber = d12_signFFNumber + d12_validFFNumber + d12_specialFFNumber + d12_ctrlFFNumber + d12_xFFNumber + d12_aFFNumber;
 
 	/*------------------------------------------ Stage 2 ------------------------------------------*/
 		// multiplication 1
-		wire [7:0] abs_x0, abs_x1, abs_x2, abs_x3;
-		wire [50:0] andNumber0, andNumber1, andNumber2, andNumber3;
-		wire [50:0] andNumber;
-
-		And2Bus #(8) (abs_x0, d12_abs_x, d12_aValue[0], andNumber0);
-		And2Bus #(8) (abs_x1, d12_abs_x, d12_aValue[1], andNumber1);
-		And2Bus #(8) (abs_x2, d12_abs_x, d12_aValue[2], andNumber2);
-		And2Bus #(8) (abs_x3, d12_abs_x, d12_aValue[3], andNumber3);
-		assign andNumber = andNumber0 + andNumber1 + andNumber2 + andNumber3;
-
-		wire [9:0] add01, add23;
-		wire [50:0] ck8Number01, ck8Number23;
-		wire [50:0] ck8Number;
-
-		assign add01[0] = abs_x0[0];
-		assign add23[0] = abs_x2[0];
-		carrySkip8NoCin(add01[8:1], add01[9], {1'b0, abs_x0[7:1]}, abs_x1[7:0], ck8Number01);
-		carrySkip8NoCin(add23[8:1], add23[9], {1'b0, abs_x2[7:1]}, abs_x3[7:0], ck8Number23);
-		assign ck8Number = ck8Number01 + ck8Number23;
-		
 		wire [50:0] stage2Number;
-		assign stage2Number = andNumber + ck8Number;
+		wire [5:0] add01, add23;
+		mulStage1(add01[5:0], add23[5:0], d12_aValue[3:0], d12_abs_x[3:0], stage2Number);
 
 	/*--------------------------------------- Stage 2 --> 3 ---------------------------------------*/
-		wire d23_sign, d23_valid;
-		wire [9:0] d23_add01, d23_add23;
-		wire [9:0] d23_bValue;
-		wire [50:0] d23_signFFNumber, d23_validFFNumber, d23_bFFNumber, d23_add01FFNumber, d23_add23FFNumber;
+		wire d23_sign, d23_valid, d23_special;
+		wire d23_CTRL0, d23_CTRL1, d23_CTRL2;
+		wire [5:0] d23_add01, d23_add23;
+		wire [50:0] d23_signFFNumber, d23_validFFNumber, d23_specialFFNumber, d23_ctrlFFNumber, d23_add01FFNumber, d23_add23FFNumber;
 		wire [50:0] stage23FFNumber;
 
 		FD2 d23_signFF(d23_sign, d12_sign, clk, rst_n, d23_signFFNumber);
-		FD2 d32_validFF(d23_valid, d12_valid, clk, rst_n, d23_validFFNumber);
-		REGP #(10) d23_bFF(d23_bValue, d12_bValue, clk, rst_n, d23_bFFNumber);
-		REGP #(10) d23_add01FF(d23_add01, add01, clk, rst_n, d23_add01FFNumber);
-		REGP #(10) d23_add23FF(d23_add23, add23, clk, rst_n, d23_add23FFNumber);
+		FD2 d23_validFF(d23_valid, d12_valid, clk, rst_n, d23_validFFNumber);
+		FD2 d23_specialFF(d23_special, d12_special, clk, rst_n, d23_specialFFNumber);
+		REGP #(3) d23_ctrlFF({d23_CTRL0, d23_CTRL1, d23_CTRL2}, {d12_CTRL0, d12_CTRL1, d12_CTRL2}, clk, rst_n, d23_ctrlFFNumber);
+		REGP #(6) d23_add01FF(d23_add01, add01, clk, rst_n, d23_add01FFNumber);
+		REGP #(6) d23_add23FF(d23_add23, add23, clk, rst_n, d23_add23FFNumber);
 		
-		assign stage23FFNumber = d23_signFFNumber + d23_validFFNumber + d23_bFFNumber + d23_add01FFNumber + d23_add23FFNumber;
+		assign stage23FFNumber = d23_signFFNumber + d23_validFFNumber + d23_specialFFNumber + d23_ctrlFFNumber + d23_add01FFNumber + d23_add23FFNumber;
 
 	/*------------------------------------------ Stage 3 ------------------------------------------*/
 		// multiplication 2
-		wire [11:0] mul;
-		wire carry;
-		wire [50:0] ck8Number0123, twoBitsaddOneBitNumber;
-		assign mul[1:0] = d23_add01[1:0];
-		carrySkip8NoCin(mul[9:2], carry, d23_add01[9:2], d23_add23[7:0], ck8Number0123);
-		twoBitsaddOneBit(mul[11:10], d23_add23[9:8], carry, twoBitsaddOneBitNumber);
-
+		wire [7:0] mul;
 		wire [50:0] stage3Number;
-		assign stage3Number = ck8Number0123 + twoBitsaddOneBitNumber;
+		mulStage2(mul, d23_add01, d23_add23, stage3Number);
 
 	/*--------------------------------------- Stage 3 --> 4 ---------------------------------------*/
-		wire d34_sign, d34_valid;
-		wire [ 9:0] d34_bValue;
-		wire [11:0] d34_mul;
-		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_bFFNumber, d34_mulFFNumber;
+		wire d34_sign, d34_valid, d34_special;
+		wire d34_CTRL0, d34_CTRL1, d34_CTRL2;
+		wire [7:0] d34_mul;
+		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_specialFFNumber, d34_ctrlFFNumber, d34_mulFFNumber;
 		wire [50:0] stage34FFNumber;
 
 		FD2 d34_signFF(d34_sign, d23_sign, clk, rst_n, d34_signFFNumber);
 		FD2 d34_validFF(d34_valid, d23_valid, clk, rst_n, d34_validFFNumber);
-		REGP #(10) d34_bFF(d34_bValue, d23_bValue, clk, rst_n, d34_bFFNumber);
-		REGP #(12) d34_mulFF(d34_mul, mul, clk, rst_n, d34_mulFFNumber);
+		FD2 d34_specialFF(d34_special, d23_special, clk, rst_n, d34_specialFFNumber);
+		REGP #(3) d34_ctrlFF({d34_CTRL0, d34_CTRL1, d34_CTRL2}, {d23_CTRL0, d23_CTRL1, d23_CTRL2}, clk, rst_n, d34_ctrlFFNumber);
+		REGP #(8) d34_mulFF(d34_mul, mul, clk, rst_n, d34_mulFFNumber);
 		
-		assign stage34FFNumber = d34_signFFNumber + d34_validFFNumber + d34_bFFNumber + d34_mulFFNumber;
+		assign stage34FFNumber = d34_signFFNumber + d34_validFFNumber + d34_specialFFNumber + d34_ctrlFFNumber + d34_mulFFNumber;
 
 	/*------------------------------------------ Stage 4 ------------------------------------------*/
-		// addition
-		wire [11:0] funcOut;
+		// add b
+		wire [9:0] bValue;
+		wire [50:0] bSelectNumber;
+		// b10bitsSelector(bValue, d34_CTRL0, d34_CTRL1, d34_CTRL2, bSelectNumber);
+		wire d34_nCTRL0, d34_nCTRL1, d34_nCTRL2;
+		IvBus #(3) ({d34_nCTRL0, d34_nCTRL1, d34_nCTRL2}, {d34_CTRL0, d34_CTRL1, d34_CTRL2}, d34_ivNumber);
+		b10bitsSelectorEnhanced(bValue[9:0], d34_CTRL0, d34_nCTRL0, d34_CTRL1, d34_nCTRL1, d34_CTRL2, d34_nCTRL2, bSelectNumber);
+
+		wire [9:0] funcOut;
+		wire [50:0] addStageNumber;
+		addStage(funcOut, d34_mul, bValue, addStageNumber);
+
 		wire [50:0] stage4Number;
-		carrySkip12NoC(funcOut, d34_mul, {1'b0, 1'b1,d34_bValue}, stage4Number);
+		assign stage4Number = d34_ivNumber + bSelectNumber + addStageNumber;
 
 	/*--------------------------------------- Stage 4 --> 5 ---------------------------------------*/
-		wire d45_sign, d45_valid;
-		wire [11:0] d45_funcOut;
-		wire [50:0] d45_signFFNumber, d45_validFFNumber, d45_funcOutFFNumber;
+		wire d45_sign, d45_valid, d45_special;
+		wire [9:0] d45_funcOut;
+		wire [50:0] d45_signFFNumber, d45_validFFNumber, d45_specialFFNumber, d45_funcOutFFNumber;
 		wire [50:0] stage45FFNumber;
 
 		FD2 d45_signFF(d45_sign, d34_sign, clk, rst_n, d45_signFFNumber);
 		FD2 d45_validFF(d45_valid, d34_valid, clk, rst_n, d45_validFFNumber);
-		REGP #(12) d45_mulFF(d45_funcOut, funcOut, clk, rst_n, d45_funcOutFFNumber);
+		FD2 d45_specialFF(d45_special, d34_special, clk, rst_n, d45_specialFFNumber);
+		REGP #(10) d45_mulFF(d45_funcOut, funcOut, clk, rst_n, d45_funcOutFFNumber);
 		
-		assign stage45FFNumber = d45_signFFNumber + d45_validFFNumber + d45_funcOutFFNumber;
+		assign stage45FFNumber = d45_signFFNumber + d45_validFFNumber + d45_specialFFNumber + d45_funcOutFFNumber;
 
 	/*------------------------------------------ Stage 5 ------------------------------------------*/
 		// output handling
-		wire [11:0] outTemp;
-		wire [50:0] xor2BusNumber, mux2BusNumber;
-		Xor2Bus #(11) (outTemp[11:1], d45_funcOut[10:0], d45_sign, xor2BusNumber);
-		// Mux2Bus #(4) (outTemp[3:0], 4'b0011, 4'b1011, d45_sign, mux2BusNumber);
-		assign outTemp[0] = d45_sign;
+		wire [15:0] outTemp1;
+		wire [50:0] xor2BusNumber;
+		assign outTemp1[ 0] = 1'b1;
+		assign outTemp1[ 1] = 1'b1;
+		assign outTemp1[ 2] = 1'b0;
+		assign outTemp1[ 3] = d45_sign;
+		Xor2Bus #(11) (outTemp1[14:4], {1'b1, d45_funcOut[9:0]}, d45_sign, xor2BusNumber);
+		assign outTemp1[15] = 1'b0;
+		
+		// special  --> 0 000_0010_0100_1 10 1
+		// outTemp1 --> 0 xxx_xxxx_xxxx_! 01 1  x stands for funcOut inverted
+		// [14:10],8,7,5,4 -> x & special'
+		// 9,6,3 -> x + special = (x' & special')'
+		wire [15:0] outTemp2;
+
+		wire nSpecial, n9, n6, n3;
+		wire [50:0] ivBusNumber, nandBusNumber, andBusNumber;
+		IvBus #(4) ({nSpecial, n9, n6, n3}, {d45_special, outTemp1[9], outTemp1[6], outTemp1[3]}, ivBusNumber);
+
+		assign outTemp2[ 0] = 1'b1;
+		assign outTemp2[ 1] = nSpecial;
+		assign outTemp2[ 2] = d45_special;
+		Nand2Bus #(3) ({outTemp2[9], outTemp2[6], outTemp2[3]}, {n9, n6, n3}, nSpecial, nandBusNumber);
+		And2Bus #(9) ({outTemp2[14:10], outTemp2[8:7], outTemp2[5:4]}, {outTemp1[14:10], outTemp1[8:7], outTemp1[5:4]}, nSpecial, andBusNumber);
+		assign outTemp2[15] = 1'b0;
 
 		wire [50:0] stage5Number;
-		assign stage5Number = xor2BusNumber;
+		assign stage5Number = xor2BusNumber + ivBusNumber + nandBusNumber + andBusNumber;
 
 	/*------------------------------------- Stage 5 --> Output -------------------------------------*/
 		wire [50:0] outputValidFFNumber, outputFFNumber;
 		wire [50:0] stage5OutFFNumber;
 
 		FD2 outputValidFF(o_out_valid, d45_valid, clk, rst_n, outputValidFFNumber);
-		REGP #(12) outputFF(o_y[14:3], outTemp[11:0], clk, rst_n, outputFFNumber);
-		assign o_y[2:0] = 3'b011;
+		REGP #(14) outputFF(o_y[14:1], outTemp2[14:1], clk, rst_n, outputFFNumber);
+		assign o_y[0] = 1'b1;
 		assign o_y[15] = 1'b0;
 
 		assign stage5OutFFNumber = outputValidFFNumber + outputFFNumber;
@@ -306,6 +316,36 @@ module IvBus#(
 	generate
 		for (i=0; i<BW; i=i+1) begin
 			IV iv0(out[i], in[i], numbers[i]);
+		end
+	endgenerate
+
+	//sum number of transistors
+	reg [50:0] sum;
+	integer j;
+	always @(*) begin
+		sum = 0;
+		for (j=0; j<BW; j=j+1) begin 
+			sum = sum + numbers[j];
+		end
+	end
+	assign number = sum;
+endmodule
+
+module Nand2Bus#(
+		parameter BW = 2
+	)(
+		output [BW-1:0] out,
+		input  [BW-1:0] in1,
+		input  in2,
+		output [  50:0] number
+	);
+
+	wire [50:0] numbers [0:BW-1];
+
+	genvar i;
+	generate
+		for (i=0; i<BW; i=i+1) begin
+			ND2 nd2(out[i], in1[i], in2, numbers[i]);
 		end
 	endgenerate
 
@@ -912,13 +952,13 @@ module b10bitsSelector(
 	// 2^(-2) to 2^(-11)
 	Mux8Bus #(10) (out,
 				10'b00_0000_0011,
-				10'b00_0001_1101,
-				10'b00_0111_1110,
-				10'b01_0000_1111,
-				10'b01_1000_1011,
-				10'b10_0010_0100,
-				10'b10_1110_0010,
-				10'b11_0101_1000,
+				10'b00_1111_1101,
+				10'b01_1101_1110,
+				10'b10_1000_1111,
+				10'b11_0000_1011,
+				10'b11_0110_0100,
+				10'b11_1010_0010,
+				10'b11_1100_1000,
 				CTRL0,
 				CTRL1,
 				CTRL2,
@@ -937,82 +977,85 @@ module b10bitsSelectorEnhanced(
 	);
 	// 2^(-2) to 2^(-11)
 
-	// out[9] = CTRL0(CTRL1 + CTRL2)
-	//		  = CTRL0(CTRL1'CTRL2')'
-		wire nandn1n2;
-		wire [50:0] nandn1n2Number, out9Number;
-		wire [50:0] number9;
+	// out[0] = CTRL1'CTRL2' + CTRL0'CTRL2
+		wire nandn1n2, nandn02;
+		wire [50:0] nandn1n2Number, nandn02Number, out0Number;
+		wire [50:0] number0;
 		ND2(nandn1n2, nCTRL1, nCTRL2, nandn1n2Number);
-		AN2(out[9],  CTRL0, nandn1n2, out9Number);
-		assign number9 = nandn1n2Number + out9Number;
+		ND2(nandn02, nCTRL0, CTRL2, nandn02Number);
+		ND2(out[0], nandn1n2, nandn02, out0Number);
+		assign number0 = nandn1n2Number + nandn02Number + out0Number;
 
-	// out[8] =  CTRL1CTRL2 + CTRL0CTRL1'CTRL2'
-	//        = [(CTRL1CTRL2)'( CTRL0CTRL1'CTRL2')']'
-		wire nand12, nand0n1n2;
-		wire [50:0] nand12Number, nand0n1n2Number, out8Number;
-		wire [50:0] number8;
+	// out[1] =  CTRL2' + CTRL0'CTRL1
+		wire nandn01;
+		wire [50:0] nandn01Number, out1Number;
+		wire [50:0] number1;
+		ND2(nandn01, nCTRL0, CTRL1, nandn01Number);
+		ND2(out[1], CTRL2, nandn01, out1Number);
+		assign number1 = nandn01Number + out1Number;
+
+	// out[2] = CTRL1'CTRL2 + CTRL0'CTRL1
+	// 		  = MUX, CTRL = CTRL1, 0 -> CTRL2, 1 -> CTRL0'
+		wire nandn12;
+		wire [50:0] nandn12Number, out2Number;
+		wire [50:0] number2;
+		ND2(nandn12, nCTRL1, CTRL2, nandn12Number);
+		ND2(out[2], nandn12, nandn01, out2Number);
+		assign number2 = nandn12Number + out2Number;
+
+	// out[3] =  CTRL0'CTRL1 + CTRL0'CTRL2 + CTRL1CTRL2 + CTRL0CTRL1'CTRL2'
+		wire nand12;
+		wire [50:0] nand12Number, nand0n1n2Number, out3Number;
+		wire [50:0] number3;
 		ND2(nand12, CTRL1, CTRL2, nand12Number);
 		ND3(nand0n1n2, CTRL0, nCTRL1, nCTRL2, nand0n1n2Number);
-		ND2(out[8], nand12, nand0n1n2, out8Number);
-		assign number8 = nand12Number + nand0n1n2Number + out8Number;
+		ND4(out[3], nandn01, nandn02, nand12, nand0n1n2, out3Number);
+		assign number3 = nand12Number + nand0n1n2Number + out3Number;
 
-	// out[7] = CTRL0CTRL2'
-		wire [50:0] number7;
-		AN2(out[7], CTRL0, nCTRL2, number7);
-
-	// out[6] = CTRL1(CTRL0 + CTRL2')
-	//        = CTRL1(CTRL0'CTRL2)'
-		wire nandn02;
-		wire [50:0] nandn02Number, out6Number;
-		wire [50:0] number6;
-		ND2(nandn02, nCTRL0, CTRL2, nandn02Number);
-		AN2(out[6],  CTRL1, nandn02, out6Number);
-		assign number6 = nandn02Number + out6Number;
-
-	// out[5] =  CTRL1CTRL2' + CTRL0CTRL1'CTRL2
-	//        = [(CTRL1CTRL2')'( CTRL0CTRL1'CTRL2)']'
-		wire nand1n2, nand0n12;
-		wire [50:0] nand1n2Number, nand0n12Number, out5Number;
-		wire [50:0] number5;
-		ND2(nand1n2, CTRL1, nCTRL2, nand1n2Number);
-		ND3(nand0n12, CTRL0, nCTRL1, CTRL2, nand0n12Number);
-		ND2(out[5], nand1n2, nand0n12, out5Number);
-		assign number5 = nand1n2Number + nand0n12Number + out5Number;
-
-	// out[4] =   CTRL0'CTRL1'CTRL2 + CTRL0'CTRL1CTRL2' + CTRL0CTRL1CTRL2
-	//        = [(CTRL0'CTRL1'CTRL2)'(CTRL0'CTRL1CTRL2')'(CTRL0CTRL1CTRL2)']'
-		wire nandn0n12, nandn01n2, nand012;
-		wire [50:0] nandn0n12Number, nandn01n2Number, nand012, out4Number;
+	// out[4] = CTRL0'CTRL1'CTRL2 + CTRL0'CTRL1CTRL2'
+		wire nandn0n12, nandn01n2;
+		wire [50:0] nandn0n12Number, nandn01n2Number, out4Number;
 		wire [50:0] number4;
 		ND3(nandn0n12, nCTRL0, nCTRL1,  CTRL2, nandn0n12Number);
 		ND3(nandn01n2, nCTRL0,  CTRL1, nCTRL2, nandn01n2Number);
-		ND3(  nand012,  CTRL0,  CTRL1,  CTRL2,   nand012Number);
-		ND3(out[4], nandn0n12, nandn01n2, nand012, out4Number);
-		assign number4 = nandn0n12Number + nandn01n2Number + nand012Number + out4Number;
-	
-	// out[3] =  CTRL0'CTRL1 + CTRL0'CTRL2 + CTRL1CTRL2 + CTRL0CTRL1'CTRL2'
-	//        = [(CTRL0'CTRL1)'(CTRL0'CTRL2)'(CTRL1CTRL2)'(CTRL0CTRL1'CTRL2')']'
-		wire nandn01;
-		wire [50:0] nandn01Number, out3Number;
-		wire [50:0] number3;
-		ND2(nandn01, nCTRL0, CTRL1, nandn01Number);
-		ND4(out[3], nandn01, nandn02, nand12, nand0n1n2, out3Number);
-		assign number3 = nandn01Number + out3Number;
+		ND2(out[4], nandn0n12, nandn01n2, out4Number);
+		assign number4 = nandn0n12Number + nandn01n2Number + out4Number;
 
-	// out[2] = CTRL1'CTRL2 + CTRL1CTRL0'
-	// 		  = MUX, CTRL = CTRL1, 0 -> CTRL2, 1 -> CTRL0'
-		wire number2;
-		MUX21H(out[2], CTRL2, nCTRL0, CTRL1, number2);
+	// out[5] = CTRL1'CTRL2 + CTRL0CTRL1CTRL2'
+		wire nand01n2;
+		wire [50:0] nand01n2Number, out5Number;
+		wire [50:0] number5;
+		ND3(nand01n2, CTRL0, CTRL1, nCTRL2, nand01n2Number);
+		ND2(out[5], nandn12, nand01n2, out5Number);
+		assign number5 = nand01n2Number + out5Number;
 
-	// out[1] =  CTRL2' + CTRL0'CTRL1
-	//        = [CTRL2(CTRL0'CTRL1)']'
-		wire [50:0] number1;
-		ND2(out[1], CTRL2, nandn01, number1);
+	// out[6] = CTRL1'CTRL2 + CTRL0CTRL2 + CTRL0'CTRL1CTRL2'
+		wire nand02;
+		wire [50:0] nand02Number, out6Number;
+		wire [50:0] number6;
+		ND2(nand02, CTRL0, CTRL2, nand02Number);
+		ND3(out[6], nandn12, nand02, nandn01n2, out6Number);
+		assign number6 = nand02Number + out6Number;
 
-	// out[0] = CTRL1'CTRL2' + CTRL0'CTRL2
-	//		  = MUX, CTRL = CTRL2, 0 -> CTRL1', 1 -> CTRL0'
-		wire number0;
-		MUX21H(out[0], nCTRL1, nCTRL0, CTRL2, number0);
+	// out[7] = CTRL1 + CTRL0'CTRL2
+		wire [50:0] number7;
+		ND2(out[7], nCTRL1, nandn02, number7);
+
+	// out[8] = CTRL0 + CTRL1CTRL2'
+		wire nand1n2;
+		wire [50:0] nand1n2Number, out8Number;
+		wire [50:0] number8;
+		ND2(nand1n2, CTRL1, nCTRL2, nand1n2Number);
+		ND2(out[8], nCTRL0, nand1n2, out8Number);
+		assign number8 = nand1n2Number + out8Number;
+
+	// out[9] = CTRL0 + CTRL1CTRL2
+		wire nand12;
+		wire [50:0] nand12Number, out9Number;
+		wire [50:0] number9;
+		ND2(nand12, CTRL1, CTRL2, nand12Number);
+		ND2(out[9], nCTRL0, nand12, out9Number);
+		assign number9 = nand12Number + out9Number;
 
 	assign number = number0 + number1 + number2 + number3 + number4
 				  + number5 + number6 + number7 + number8 + number9;
@@ -1033,16 +1076,70 @@ module carrySkip8NoCin(
 	assign number = number1 + number2;
 endmodule
 
-module twoBitsaddOneBit(
-		output [1:0] S,
-		input [1:0] A,
-		input B,
+module mulStage1(
+		output [5:0] add01,
+		output [5:0] add23,
+		input [3:0] aValue,
+		input [3:0] abs_x,
 		output [50:0] number
 	);
-	wire [50:0] xorNumber, nand1Number, nand2Number;
-	wire temp;
-	EO(S[0], A[0], B, xorNumber);
-	ND2(temp, A[0], B, nand1Number);
-	ND2(S[1], A[1], temp, nand2Number);
-	assign number = xorNumber + nand1Number + nand2Number;
+		wire [3:0] abs_x0, abs_x1, abs_x2, abs_x3;
+		wire [50:0] andNumber0, andNumber1, andNumber2, andNumber3;
+		wire [50:0] andNumber;
+
+		And2Bus #(4) (abs_x0, abs_x[3:0], aValue[0], andNumber0);
+		And2Bus #(4) (abs_x1, abs_x[3:0], aValue[1], andNumber1);
+		And2Bus #(4) (abs_x2, abs_x[3:0], aValue[2], andNumber2);
+		And2Bus #(4) (abs_x3, abs_x[3:0], aValue[3], andNumber3);
+		assign andNumber = andNumber0 + andNumber1 + andNumber2 + andNumber3;
+
+		wire carry01, carry23;
+		wire [50:0] ck4Number01, ck4Number23;
+		wire [50:0] stage2Number;
+
+		assign add01[0] = abs_x0[0];
+		carrySkip4NoCin(add01[4:1], add01[5], {1'b0, abs_x0[3:1]}, abs_x1[3:0], ck4Number01);
+
+		assign add23[0] = abs_x2[0];
+		carrySkip4NoCin(add23[4:1], add23[5], {1'b0, abs_x2[3:1]}, abs_x3[3:0], ck4Number23);
+
+		assign number = andNumber + ck4Number01 + ck4Number23;
+endmodule
+
+module mulStage2(
+		output [7:0] S,
+		input [5:0] add01,
+		input [5:0] add23,
+		output [50:0] number
+	);
+	assign S[1:0] = add01[1:0];
+	wire carry5, n7, nd6;
+	wire [50:0] ck4Number, xorNumber, nand2Number1, ivNumber, nand2Number2;
+
+	carrySkip4NoCin(S[5:2], carry5, add01[5:2], add23[3:0], ck4Number);
+	EO(S[6], carry5, add23[4], xorNumber);
+	ND2(nd6, carry5, add23[4], nand2Number1);
+	IV(n7, add23[5], ivNumber);
+	ND2(S[7], nd6, n7, nand2Number2);
+
+	assign number = ck4Number + xorNumber + nand2Number1 + ivNumber + nand2Number2;
+endmodule
+
+module addStage(
+		output [9:0] S,
+		input [7:0] mul,
+		input [9:0] b,
+		output [50:0] number
+	);
+	wire carry, n9, nd8;
+	wire [50:0] ck8Number, xorNumber, nand2Number1, ivNumber, nand2Number2;
+
+	carrySkip8NoCin(S[7:0], carry, mul[7:0], b[7:0], ck8Number);
+	EO(S[8], carry, b[8], xorNumber);
+
+	ND2(nd8, carry, b[8], nand2Number1);
+	IV(n9, b[9], ivNumber);
+	ND2(S[9], nd8, n9, nand2Number2);
+
+	assign number = ck8Number + xorNumber + nand2Number1 + ivNumber + nand2Number2;
 endmodule
