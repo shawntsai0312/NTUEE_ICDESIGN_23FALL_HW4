@@ -54,7 +54,7 @@ module sigmoid (
 	/*--------------------------------------- Stage 1 --> 2 ---------------------------------------*/
 		wire d12_sign, d12_valid, d12_special;
 		wire d12_CTRL0, d12_CTRL1, d12_CTRL2;
-		wire [7:0] d12_abs_x;
+		wire [3:0] d12_abs_x;
 		wire [3:0] d12_aValue;
 		wire [50:0] d12_signFFNumber, d12_validFFNumber, d12_specialFFNumber, d12_ctrlFFNumber, d12_xFFNumber, d12_aFFNumber;
 		wire [50:0] stage12FFNumber;
@@ -63,7 +63,7 @@ module sigmoid (
 		FD2 d12_validFF(d12_valid, d01_valid, clk, rst_n, d12_validFFNumber);
 		FD2 d12_specialFF(d12_special, special, clk, rst_n, d12_specialFFNumber);
 		REGP #(3) d12_ctrlFF({d12_CTRL0, d12_CTRL1, d12_CTRL2}, {CTRL0, CTRL1, CTRL2}, clk, rst_n, d12_ctrlFFNumber);
-		REGP #(8) d12_xFF(d12_abs_x, d01_abs_x, clk, rst_n, d12_xFFNumber);
+		REGP #(4) d12_xFF(d12_abs_x[3:0], d01_abs_x[3:0], clk, rst_n, d12_xFFNumber);
 		REGP #(4) d12_aFF(d12_aValue, aValue, clk, rst_n, d12_aFFNumber);
 
 		assign stage12FFNumber = d12_signFFNumber + d12_validFFNumber + d12_specialFFNumber + d12_ctrlFFNumber + d12_xFFNumber + d12_aFFNumber;
