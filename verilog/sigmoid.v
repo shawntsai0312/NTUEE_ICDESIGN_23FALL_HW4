@@ -11,45 +11,55 @@ module sigmoid (
 	// Your design
 	/*------------------------------------------ Stage 0 ------------------------------------------*/
 		// input handling
-		wire sign;
-		wire [7:0] abs_x;
-		wire [50:0] handleInputNumber;
-		wire [50:0] stage0Number;
+		wire [7:0] nIn;
+		wire [50:0] nivBusNumber;
+		IvBus #(8) (nIn[7:0], i_x[7:0], nivBusNumber);
 
-		handleInput(abs_x, sign, i_x, handleInputNumber);
-		assign stage0Number = handleInputNumber;
-		// wire [7:0] testInput;
-		// assign testInput = 8'b1000_0000;
-		// handleInput(abs_x, sign, testInput, handleInputNumber);
+		wire [7:0] nx;
+		wire [50:0] addOneNumber;
+		addOne(nx[7:0], nIn[7:0], addOneNumber);
+
+		wire [50:0] stage0Number;
+		assign stage0Number = nivBusNumber + addOneNumber;
 
 	/*--------------------------------------- Stage 0 --> 1 ---------------------------------------*/
-		wire d01_sign, d01_valid;
-		wire [7:0] d01_abs_x;
-		wire [50:0] d01_signFFNumber, d01_validFFNumber, d01_xFFNumber;
+		wire d01_valid;
+		wire [7:0] d01_x, d01_nx;
+		wire [50:0] d01_validFFNumber, d01_xFFNumber, d01_nxFFNumber;
 		wire [50:0] stage01FFNumber;
 
-		FD2 d01_signFF(d01_sign, sign, clk, rst_n, d01_signFFNumber);
 		FD2 d01_validFF(d01_valid, i_in_valid, clk, rst_n, d01_validFFNumber);
-		REGP #(8) d01_xFF(d01_abs_x, abs_x, clk, rst_n, d01_xFFNumber);
+		REGP #(8) d01_xFF(d01_x, i_x, clk, rst_n,  d01_xFFNumber);
+		REGP #(8) d01_nxFF(d01_nx, nx, clk, rst_n, d01_nxFFNumber);
 
-		assign stage01FFNumber = d01_signFFNumber + d01_validFFNumber + d01_xFFNumber;
+		assign stage01FFNumber = d01_validFFNumber + d01_xFFNumber + d01_nxFFNumber;
 
 	/*------------------------------------------ Stage 1 ------------------------------------------*/
-		// getting a and special
+		// getting sign, abs_x, special and a
+		wire sign;
+		assign sign = d01_x[7];
+
+		wire [7:0] abs_x;
+		wire [50:0] absMuxNumber;
+		Mux2Bus #(8) (abs_x[7:0], d01_x[7:0], d01_nx[7:0], sign, absMuxNumber);
+
 		wire special;
+		wire [50:0] andSpecialNumber;
+		AN2(special, sign, abs_x[7], andSpecialNumber);
+
 		wire CTRL0, CTRL1, CTRL2;
 		wire nCTRL0, nCTRL1, nCTRL2;
-		wire [3:0] aValue;
-		wire [50:0] andSpecialNumber, aSelectNumber, ivCTRLNumber;
-
-		AN2(special, d01_sign, d01_abs_x[7], andSpecialNumber);
-		assign {CTRL0, CTRL1, CTRL2} = d01_abs_x[6:4];
+		wire [50:0] ivCTRLNumber;
+		
+		assign {CTRL0, CTRL1, CTRL2} = abs_x[6:4];
 		IvBus #(3) ({nCTRL0, nCTRL1, nCTRL2}, {CTRL0, CTRL1, CTRL2}, ivCTRLNumber);
-		// a4bitsSelector( aValue[3:0], CTRL0, CTRL1, CTRL2, aSelectNumber);
+
+		wire [3:0] aValue;
+		wire [50:0] aSelectNumber;
 		a4bitsSelectorEnhanced(aValue[3:0], CTRL0, nCTRL0, CTRL1, nCTRL1, CTRL2, nCTRL2, aSelectNumber);
 
 		wire [50:0] stage1Number;
-		assign stage1Number = andSpecialNumber + aSelectNumber + ivCTRLNumber;
+		assign stage1Number = absMuxNumber + andSpecialNumber + ivCTRLNumber + aSelectNumber;
 
 	/*--------------------------------------- Stage 1 --> 2 ---------------------------------------*/
 		wire d12_sign, d12_valid, d12_special;
@@ -59,11 +69,11 @@ module sigmoid (
 		wire [50:0] d12_signFFNumber, d12_validFFNumber, d12_specialFFNumber, d12_ctrlFFNumber, d12_xFFNumber, d12_aFFNumber;
 		wire [50:0] stage12FFNumber;
 
-		FD2 d12_signFF(d12_sign, d01_sign, clk, rst_n, d12_signFFNumber);
+		FD2 d12_signFF(d12_sign, sign, clk, rst_n, d12_signFFNumber);
 		FD2 d12_validFF(d12_valid, d01_valid, clk, rst_n, d12_validFFNumber);
 		FD2 d12_specialFF(d12_special, special, clk, rst_n, d12_specialFFNumber);
 		REGP #(3) d12_ctrlFF({d12_CTRL0, d12_CTRL1, d12_CTRL2}, {CTRL0, CTRL1, CTRL2}, clk, rst_n, d12_ctrlFFNumber);
-		REGP #(4) d12_xFF(d12_abs_x[3:0], d01_abs_x[3:0], clk, rst_n, d12_xFFNumber);
+		REGP #(4) d12_xFF(d12_abs_x[3:0], abs_x[3:0], clk, rst_n, d12_xFFNumber);
 		REGP #(4) d12_aFF(d12_aValue, aValue, clk, rst_n, d12_aFFNumber);
 
 		assign stage12FFNumber = d12_signFFNumber + d12_validFFNumber + d12_specialFFNumber + d12_ctrlFFNumber + d12_xFFNumber + d12_aFFNumber;
@@ -93,39 +103,39 @@ module sigmoid (
 	/*------------------------------------------ Stage 3 ------------------------------------------*/
 		// multiplication 2
 		wire [7:0] mul;
+		wire [50:0] mulNumber;
+		mulStage2(mul, d23_add01, d23_add23, mulNumber);
+
+		// get b
+		wire [9:0] bValue;
+		wire [50:0] bSelectNumber, d23_ivNumber;
+		wire d23_nCTRL0, d23_nCTRL1, d23_nCTRL2;
+		IvBus #(3) ({d23_nCTRL0, d23_nCTRL1, d23_nCTRL2}, {d23_CTRL0, d23_CTRL1, d23_CTRL2}, d23_ivNumber);
+		b10bitsSelectorEnhanced(bValue[9:0], d23_CTRL0, d23_nCTRL0, d23_CTRL1, d23_nCTRL1, d23_CTRL2, d23_nCTRL2, bSelectNumber);
+
 		wire [50:0] stage3Number;
-		mulStage2(mul, d23_add01, d23_add23, stage3Number);
+		assign stage3Number = mulNumber + d23_ivNumber + bSelectNumber;
 
 	/*--------------------------------------- Stage 3 --> 4 ---------------------------------------*/
 		wire d34_sign, d34_valid, d34_special;
-		wire d34_CTRL0, d34_CTRL1, d34_CTRL2;
 		wire [7:0] d34_mul;
-		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_specialFFNumber, d34_ctrlFFNumber, d34_mulFFNumber;
+		wire [9:0] d34_bValue;
+		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_specialFFNumber, d34_mulFFNumber, d34_bValueNumber;
 		wire [50:0] stage34FFNumber;
 
 		FD2 d34_signFF(d34_sign, d23_sign, clk, rst_n, d34_signFFNumber);
 		FD2 d34_validFF(d34_valid, d23_valid, clk, rst_n, d34_validFFNumber);
 		FD2 d34_specialFF(d34_special, d23_special, clk, rst_n, d34_specialFFNumber);
-		REGP #(3) d34_ctrlFF({d34_CTRL0, d34_CTRL1, d34_CTRL2}, {d23_CTRL0, d23_CTRL1, d23_CTRL2}, clk, rst_n, d34_ctrlFFNumber);
 		REGP #(8) d34_mulFF(d34_mul, mul, clk, rst_n, d34_mulFFNumber);
+		REGP #(10) d34_bFF(d34_bValue, bValue, clk, rst_n, d34_bValueFFNumber);
 		
-		assign stage34FFNumber = d34_signFFNumber + d34_validFFNumber + d34_specialFFNumber + d34_ctrlFFNumber + d34_mulFFNumber;
+		assign stage34FFNumber = d34_signFFNumber + d34_validFFNumber + d34_specialFFNumber + d34_mulFFNumber + d34_bValueFFNumber;
 
 	/*------------------------------------------ Stage 4 ------------------------------------------*/
 		// add b
-		wire [9:0] bValue;
-		wire [50:0] bSelectNumber;
-		// b10bitsSelector(bValue, d34_CTRL0, d34_CTRL1, d34_CTRL2, bSelectNumber);
-		wire d34_nCTRL0, d34_nCTRL1, d34_nCTRL2;
-		IvBus #(3) ({d34_nCTRL0, d34_nCTRL1, d34_nCTRL2}, {d34_CTRL0, d34_CTRL1, d34_CTRL2}, d34_ivNumber);
-		b10bitsSelectorEnhanced(bValue[9:0], d34_CTRL0, d34_nCTRL0, d34_CTRL1, d34_nCTRL1, d34_CTRL2, d34_nCTRL2, bSelectNumber);
-
 		wire [9:0] funcOut;
-		wire [50:0] addStageNumber;
-		addStage(funcOut, d34_mul, bValue, addStageNumber);
-
 		wire [50:0] stage4Number;
-		assign stage4Number = d34_ivNumber + bSelectNumber + addStageNumber;
+		addStage(funcOut, d34_mul, d34_bValue, stage4Number);
 
 	/*--------------------------------------- Stage 4 --> 5 ---------------------------------------*/
 		wire d45_sign, d45_valid, d45_special;
@@ -270,7 +280,6 @@ module MUX81H(
 		assign number = ivNumber + nd4Number + nd8Number;
 endmodule
 
-//BW-bit FD2
 module REGP#(
 		parameter BW = 2
 	)(
