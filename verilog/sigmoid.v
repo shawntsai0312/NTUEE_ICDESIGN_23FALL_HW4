@@ -50,7 +50,7 @@ module sigmoid (
 		wire [2:0] CTRL, nCTRL;
 		wire [50:0] ivCTRLNumber;
 		
-		assign {CTRL[0], CTRL[1], CTRL[2]} = abs_x[6:4];
+		assign CTRL[2:0] = abs_x[6:4];
 		IvBus #(3) (nCTRL[2:0], CTRL[2:0], ivCTRLNumber);
 
 		wire [3:0] aValue;
@@ -246,14 +246,9 @@ module MUX81H(
 	);
 	/*-------------------------------------------- IV --------------------------------------------*/
 		wire [2:0] nCTRL;
-		wire [50:0] ivNumber0, ivNumber1, ivNumber2;
 		wire [50:0] ivNumber;
 
-		IV(nCTRL[0], CTRL[0], ivNumber0);
-		IV(nCTRL[1], CTRL[1], ivNumber1);
-		IV(nCTRL[2], CTRL[2], ivNumber2);
-
-		assign ivNumber = ivNumber0 + ivNumber1 + ivNumber2;
+		IvBus #(3) (nCTRL[2:0], CTRL[2:0], ivNumber);
 
 	/*------------------------------------------ 8 cases ------------------------------------------*/
 		wire case000, case001, case010, case011;
@@ -262,14 +257,14 @@ module MUX81H(
 		wire [50:0] number100, number101, number110, number111;
 		wire [50:0] nd4Number;
 
-		ND4(case000, in000, nCTRL[0], nCTRL[1], nCTRL[2], number000);
-		ND4(case001, in001, nCTRL[0], nCTRL[1],  CTRL[2], number001);
-		ND4(case010, in010, nCTRL[0],  CTRL[1], nCTRL[2], number010);
-		ND4(case011, in011, nCTRL[0],  CTRL[1],  CTRL[2], number011);
-		ND4(case100, in100,  CTRL[0], nCTRL[1], nCTRL[2], number100);
-		ND4(case101, in101,  CTRL[0], nCTRL[1],  CTRL[2], number101);
-		ND4(case110, in110,  CTRL[0],  CTRL[1], nCTRL[2], number110);
-		ND4(case111, in111,  CTRL[0],  CTRL[1],  CTRL[2], number111);
+		ND4(case000, in000, nCTRL[2], nCTRL[1], nCTRL[0], number000);
+		ND4(case001, in001, nCTRL[2], nCTRL[1],  CTRL[0], number001);
+		ND4(case010, in010, nCTRL[2],  CTRL[1], nCTRL[0], number010);
+		ND4(case011, in011, nCTRL[2],  CTRL[1],  CTRL[0], number011);
+		ND4(case100, in100,  CTRL[2], nCTRL[1], nCTRL[0], number100);
+		ND4(case101, in101,  CTRL[2], nCTRL[1],  CTRL[0], number101);
+		ND4(case110, in110,  CTRL[2],  CTRL[1], nCTRL[0], number110);
+		ND4(case111, in111,  CTRL[2],  CTRL[1],  CTRL[0], number111);
 
 		assign nd4Number = number000 + number001 + number010 + number011 + number100 + number101 + number110 + number111;
 
@@ -756,23 +751,23 @@ module a4bitsSelectorEnhanced(
 	);
 	// 2^(-3) to 2^(-6)
 
-	// out[3] = CTRL[0]'
-	assign out[3] = nCTRL[0];
+	// out[3] = CTRL[2]'
+	assign out[3] = nCTRL[2];
 
 	// out[2] = CTRL[1]'
 	assign out[2] = nCTRL[1];
 
-	// out[1] =  CTRL[0]'CTRL[1]'+ CTRL[2]'
+	// out[1] =  CTRL[2]'CTRL[1]'+ CTRL[0]'
 	wire or01;
 	wire [50:0] or01Number, out1Number;
-	ND2(  or01, nCTRL[0], nCTRL[1], or01Number);
-	ND2(out[1],   or01,  CTRL[2], out1Number);
+	ND2(  or01, nCTRL[2], nCTRL[1], or01Number);
+	ND2(out[1],   or01,  CTRL[0], out1Number);
 
-	// out[0] =  CTRL[0]'CTRL[2]'+ CTRL[0]CTRL[1]CTRL[2]
+	// out[0] =  CTRL[2]'CTRL[0]'+ CTRL[2]CTRL[1]CTRL[0]
 	wire or02, nand012;
 	wire [50:0] or02Number, nand012Number, out0Number;
-	ND2(    or02, nCTRL[0],  nCTRL[2], or02Number);
-	ND3( nand012,  CTRL[0],   CTRL[1], CTRL[2], nand012Number);
+	ND2(    or02, nCTRL[2],  nCTRL[0], or02Number);
+	ND3( nand012,  CTRL[2],   CTRL[1], CTRL[0], nand012Number);
 	ND2(  out[0],   or02, nand012, out0Number);
 
 	assign number = or01Number + out1Number + or02Number + nand012Number + out0Number;
@@ -805,81 +800,81 @@ module b10bitsSelectorEnhanced(
 	);
 	// 2^(-2) to 2^(-11)
 
-	// out[0] = CTRL[1]'CTRL[2]' + CTRL[0]'CTRL[2]
+	// out[0] = CTRL[1]'CTRL[0]' + CTRL[2]'CTRL[0]
 		wire nandn1n2, nandn02;
 		wire [50:0] nandn1n2Number, nandn02Number, out0Number;
 		wire [50:0] number0;
-		ND2(nandn1n2, nCTRL[1], nCTRL[2], nandn1n2Number);
-		ND2(nandn02, nCTRL[0], CTRL[2], nandn02Number);
+		ND2(nandn1n2, nCTRL[1], nCTRL[0], nandn1n2Number);
+		ND2(nandn02, nCTRL[2], CTRL[0], nandn02Number);
 		ND2(out[0], nandn1n2, nandn02, out0Number);
 		assign number0 = nandn1n2Number + nandn02Number + out0Number;
 
-	// out[1] =  CTRL[2]' + CTRL[0]'CTRL[1]
+	// out[1] =  CTRL[0]' + CTRL[2]'CTRL[1]
 		wire nandn01;
 		wire [50:0] nandn01Number, out1Number;
 		wire [50:0] number1;
-		ND2(nandn01, nCTRL[0], CTRL[1], nandn01Number);
-		ND2(out[1], CTRL[2], nandn01, out1Number);
+		ND2(nandn01, nCTRL[2], CTRL[1], nandn01Number);
+		ND2(out[1], CTRL[0], nandn01, out1Number);
 		assign number1 = nandn01Number + out1Number;
 
-	// out[2] = CTRL[1]'CTRL[2] + CTRL[0]'CTRL[1]
-	// 		  = MUX, CTRL = CTRL[1], 0 -> CTRL[2], 1 -> CTRL[0]'
+	// out[2] = CTRL[1]'CTRL[0] + CTRL[2]'CTRL[1]
+	// 		  = MUX, CTRL = CTRL[1], 0 -> CTRL[0], 1 -> CTRL[2]'
 		wire nandn12;
 		wire [50:0] nandn12Number, out2Number;
 		wire [50:0] number2;
-		ND2(nandn12, nCTRL[1], CTRL[2], nandn12Number);
+		ND2(nandn12, nCTRL[1], CTRL[0], nandn12Number);
 		ND2(out[2], nandn12, nandn01, out2Number);
 		assign number2 = nandn12Number + out2Number;
 
-	// out[3] =  CTRL[0]'CTRL[1] + CTRL[0]'CTRL[2] + CTRL[1]CTRL[2] + CTRL[0]CTRL[1]'CTRL[2]'
+	// out[3] =  CTRL[2]'CTRL[1] + CTRL[2]'CTRL[0] + CTRL[1]CTRL[0] + CTRL[2]CTRL[1]'CTRL[0]'
 		wire nand12;
 		wire [50:0] nand12Number, nand0n1n2Number, out3Number;
 		wire [50:0] number3;
-		ND2(nand12, CTRL[1], CTRL[2], nand12Number);
-		ND3(nand0n1n2, CTRL[0], nCTRL[1], nCTRL[2], nand0n1n2Number);
+		ND2(nand12, CTRL[1], CTRL[0], nand12Number);
+		ND3(nand0n1n2, CTRL[2], nCTRL[1], nCTRL[0], nand0n1n2Number);
 		ND4(out[3], nandn01, nandn02, nand12, nand0n1n2, out3Number);
 		assign number3 = nand12Number + nand0n1n2Number + out3Number;
 
-	// out[4] = CTRL[0]'CTRL[1]'CTRL[2] + CTRL[0]'CTRL[1]CTRL[2]'
+	// out[4] = CTRL[2]'CTRL[1]'CTRL[0] + CTRL[2]'CTRL[1]CTRL[0]'
 		wire nandn0n12, nandn01n2;
 		wire [50:0] nandn0n12Number, nandn01n2Number, out4Number;
 		wire [50:0] number4;
-		ND3(nandn0n12, nCTRL[0], nCTRL[1],  CTRL[2], nandn0n12Number);
-		ND3(nandn01n2, nCTRL[0],  CTRL[1], nCTRL[2], nandn01n2Number);
+		ND3(nandn0n12, nCTRL[2], nCTRL[1],  CTRL[0], nandn0n12Number);
+		ND3(nandn01n2, nCTRL[2],  CTRL[1], nCTRL[0], nandn01n2Number);
 		ND2(out[4], nandn0n12, nandn01n2, out4Number);
 		assign number4 = nandn0n12Number + nandn01n2Number + out4Number;
 
-	// out[5] = CTRL[1]'CTRL[2] + CTRL[0]CTRL[1]CTRL[2]'
+	// out[5] = CTRL[1]'CTRL[0] + CTRL[2]CTRL[1]CTRL[0]'
 		wire nand01n2;
 		wire [50:0] nand01n2Number, out5Number;
 		wire [50:0] number5;
-		ND3(nand01n2, CTRL[0], CTRL[1], nCTRL[2], nand01n2Number);
+		ND3(nand01n2, CTRL[2], CTRL[1], nCTRL[0], nand01n2Number);
 		ND2(out[5], nandn12, nand01n2, out5Number);
 		assign number5 = nand01n2Number + out5Number;
 
-	// out[6] = CTRL[1]'CTRL[2] + CTRL[0]CTRL[2] + CTRL[0]'CTRL[1]CTRL[2]'
+	// out[6] = CTRL[1]'CTRL[0] + CTRL[2]CTRL[0] + CTRL[2]'CTRL[1]CTRL[0]'
 		wire nand02;
 		wire [50:0] nand02Number, out6Number;
 		wire [50:0] number6;
-		ND2(nand02, CTRL[0], CTRL[2], nand02Number);
+		ND2(nand02, CTRL[2], CTRL[0], nand02Number);
 		ND3(out[6], nandn12, nand02, nandn01n2, out6Number);
 		assign number6 = nand02Number + out6Number;
 
-	// out[7] = CTRL[1] + CTRL[0]'CTRL[2]
+	// out[7] = CTRL[1] + CTRL[2]'CTRL[0]
 		wire [50:0] number7;
 		ND2(out[7], nCTRL[1], nandn02, number7);
 
-	// out[8] = CTRL[0] + CTRL[1]CTRL[2]'
+	// out[8] = CTRL[2] + CTRL[1]CTRL[0]'
 		wire nand1n2;
 		wire [50:0] nand1n2Number, out8Number;
 		wire [50:0] number8;
-		ND2(nand1n2, CTRL[1], nCTRL[2], nand1n2Number);
-		ND2(out[8], nCTRL[0], nand1n2, out8Number);
+		ND2(nand1n2, CTRL[1], nCTRL[0], nand1n2Number);
+		ND2(out[8], nCTRL[2], nand1n2, out8Number);
 		assign number8 = nand1n2Number + out8Number;
 
-	// out[9] = CTRL[0] + CTRL[1]CTRL[2]
+	// out[9] = CTRL[2] + CTRL[1]CTRL[0]
 		wire [50:0] number9;
-		ND2(out[9], nCTRL[0], nand12, number9);
+		ND2(out[9], nCTRL[2], nand12, number9);
 
 	assign number = number0 + number1 + number2 + number3 + number4
 				  + number5 + number6 + number7 + number8 + number9;
