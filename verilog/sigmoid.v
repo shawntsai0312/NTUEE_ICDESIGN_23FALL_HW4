@@ -655,14 +655,13 @@ module carrySkip2NoBNoCout(
 		input Cin,
 		output [50:0] number
 	);
-	wire andbc;
-	wire [50:0] number1, number2, number3;
-
+	wire nd, iv;
+	wire [50:0] number1, number2, number3, number4;
 	EO(S[0], A[0], Cin, number1);
-	AN2(andbc, A[0], Cin, number2);
-	EO(S[1], A[1], andbc, number3);
-
-	assign number = number1 + number2 + number3;
+	ND2(nd, A[0], Cin, number2);
+	IV(iv, A[1], number3);
+	ND2(S[1], nd, iv, number4);
+	assign number = number1 + number2 + number3 + number4;
 endmodule
 
 module carrySkip4(
@@ -936,14 +935,10 @@ module addStage(
 		output [50:0] number
 	);
 	wire carry, n9, nd8;
-	wire [50:0] ck8Number, xorNumber, nand2Number1, ivNumber, nand2Number2;
+	wire [50:0] ck8Number, xorNumber, nand2Number1, ivNumber, nand2Number2, ck2Number;
 
 	carrySkip8NoCin(S[7:0], carry, mul[7:0], b[7:0], ck8Number);
-	EO(S[8], b[8], carry, xorNumber);
+	carrySkip2NoBNoCout(S[9:8], b[9:8], carry, ck2Number);
 
-	ND2(nd8, carry, b[8], nand2Number1);
-	IV(n9, b[9], ivNumber);
-	ND2(S[9], nd8, n9, nand2Number2);
-
-	assign number = ck8Number + xorNumber + nand2Number1 + ivNumber + nand2Number2;
+	assign number = ck8Number + ck2Number;
 endmodule
