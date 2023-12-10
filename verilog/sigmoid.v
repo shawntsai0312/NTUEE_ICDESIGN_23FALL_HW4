@@ -414,7 +414,7 @@ module Xor2Bus#(
 	genvar i;
 	generate
 		for (i=0; i<BW; i=i+1) begin
-			EO xor2(out[i], in1[i], in2, numbers[i]);
+			EO xor2(out[i], in2, in1[i], numbers[i]);
 		end
 	endgenerate
 
@@ -500,30 +500,6 @@ module Mux8Bus#(
 	assign number = sum;
 endmodule
 
-module handleInput(
-		output [7:0] out,
-		output sign,
-		input [7:0] in,
-		output [50:0] number
-	);
-	// out[8] = in[7]
-	assign sign = in[7];
-
-	// if negative, out[7:0] = in[7:0]' + 1
-	wire [7:0] nIn;
-	wire [50:0] IvBusNumber;
-	IvBus #(8) (nIn[7:0], in[7:0], IvBusNumber);
-
-	wire [7:0] tempOut;
-	wire [50:0] addOneNumber;
-	addOne(tempOut[7:0], nIn[7:0], addOneNumber);
-
-	wire [50:0] muxNumber;
-	Mux2Bus #(8) (out[7:0], in[7:0], tempOut[7:0], in[7], muxNumber);
-
-	assign number = IvBusNumber + addOneNumber + muxNumber;
-endmodule
-
 module carrySkip4(
 		output [3:0] S,
 		output Cout,
@@ -588,10 +564,10 @@ module carrySkip4(
 		wire [50:0] Snumber;
 
 		// S[3:0]
-		EO(S[0], Cin, P[0], S0number);
-		EO(S[1], G10, P[1], S1number);
-		EO(S[2], G20, P[2], S2number);
-		EO(S[3], G30, P[3], S3number);
+		EO(S[0], P[0], Cin, S0number);
+		EO(S[1], P[1], G10, S1number);
+		EO(S[2], P[2], G20, S2number);
+		EO(S[3], P[3], G30, S3number);
 		
 		assign Snumber = S0number + S1number + S2number + S3number;
 
@@ -636,10 +612,10 @@ module carrySkip4NoB(
 		wire [50:0] Snumber;
 
 		// S[3:0]
-		EO(S[0], Cin, A[0], S0number);
-		EO(S[1], G10, A[1], S1number);
-		EO(S[2], G20, A[2], S2number);
-		EO(S[3], G30, A[3], S3number);
+		EO(S[0], A[0], Cin, S0number);
+		EO(S[1], A[1], G10, S1number);
+		EO(S[2], A[2], G20, S2number);
+		EO(S[3], A[3], G30, S3number);
 		
 		assign Snumber = S0number + S1number + S2number + S3number;
 
@@ -684,9 +660,9 @@ module carrySkip4NoBCin1(
 
 		// S[3:0]
 		IV(S[0], 	  A[0], S0number);
-		EO(S[1], G10, A[1], S1number);
-		EO(S[2], G20, A[2], S2number);
-		EO(S[3], G30, A[3], S3number);
+		EO(S[1], A[1], G10, S1number);
+		EO(S[2], A[2], G20, S2number);
+		EO(S[3], A[3], G30, S3number);
 		
 		assign Snumber = S0number + S1number + S2number + S3number;
 
@@ -763,9 +739,9 @@ module carrySkip4NoCin(
 
 		// S[3:0]
 		assign S[0] = P[0];
-		EO(S[1], G10, P[1], S1number);
-		EO(S[2], G20, P[2], S2number);
-		EO(S[3], G30, P[3], S3number);
+		EO(S[1], P[1], G10, S1number);
+		EO(S[2], P[2], G20, S2number);
+		EO(S[3], P[3], G30, S3number);
 		
 		assign Snumber = S1number + S2number + S3number;
 
@@ -837,10 +813,10 @@ module carrySkip4NoCout(
 		wire [50:0] Snumber;
 
 		// S[3:0]
-		EO(S[0], Cin, P[0], S0number);
-		EO(S[1], G10, P[1], S1number);
-		EO(S[2], G20, P[2], S2number);
-		EO(S[3], G30, P[3], S3number);
+		EO(S[0], P[0], Cin, S0number);
+		EO(S[1], P[1], G10, S1number);
+		EO(S[2], P[2], G20, S2number);
+		EO(S[3], P[3], G30, S3number);
 		
 		assign Snumber = S0number + S1number + S2number + S3number;
 
@@ -860,36 +836,6 @@ module addOne(
 	carrySkip4NoB(    out[7:4],     carryOut, in[7:4], carryBetween, number2);
 
 	assign number = number1 + number2;
-endmodule
-
-module carrySkip12(
-		output [11:0] S,
-		output Cout,
-		input [11:0] A,
-		input [11:0] B,
-		input Cin,
-		output [50:0] number
-	);
-	wire carryBetween1, carryBetween2;
-	wire [50:0] number1, number2, number3;
-	carrySkip4(S[ 3:0], carryBetween1, A[ 3:0], B[ 3:0], 		   Cin, number1);
-	carrySkip4(S[ 7:4], carryBetween2, A[ 7:4], B[ 7:4], carryBetween1, number2);
-	carrySkip4(S[11:8],          Cout, A[11:8], B[11:8], carryBetween2, number3);
-	assign number = number1 + number2 + number3;
-endmodule
-
-module carrySkip12NoC(
-		output [11:0] S,
-		input [11:0] A,
-		input [11:0] B,
-		output [50:0] number
-	);
-	wire carryBetween1, carryBetween2;
-	wire [50:0] number1, number2, number3;
-	carrySkip4NoCin( S[ 3:0], carryBetween1, A[ 3:0], B[ 3:0],                number1);
-	carrySkip4(      S[ 7:4], carryBetween2, A[ 7:4], B[ 7:4], carryBetween1, number2);
-	carrySkip4NoCout(S[11:8],                A[11:8], B[11:8], carryBetween2, number3);
-	assign number = number1 + number2 + number3;
 endmodule
 
 module a4bitsSelector(
@@ -1126,7 +1072,7 @@ module mulStage2(
 	wire [50:0] ck4Number, xorNumber, nand2Number1, ivNumber, nand2Number2;
 
 	carrySkip4NoCin(S[5:2], carry5, add01[5:2], add23[3:0], ck4Number);
-	EO(S[6], carry5, add23[4], xorNumber);
+	EO(S[6], add23[4], carry5, xorNumber);
 	ND2(nd6, carry5, add23[4], nand2Number1);
 	IV(n7, add23[5], ivNumber);
 	ND2(S[7], nd6, n7, nand2Number2);
@@ -1144,7 +1090,7 @@ module addStage(
 	wire [50:0] ck8Number, xorNumber, nand2Number1, ivNumber, nand2Number2;
 
 	carrySkip8NoCin(S[7:0], carry, mul[7:0], b[7:0], ck8Number);
-	EO(S[8], carry, b[8], xorNumber);
+	EO(S[8], b[8], carry, xorNumber);
 
 	ND2(nd8, carry, b[8], nand2Number1);
 	IV(n9, b[9], ivNumber);
