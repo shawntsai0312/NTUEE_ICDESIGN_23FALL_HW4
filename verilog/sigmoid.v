@@ -93,9 +93,9 @@ module sigmoid (
 		FD2 d23_signFF(d23_sign, d12_sign, clk, rst_n, d23_signFFNumber);
 		FD2 d23_validFF(d23_valid, d12_valid, clk, rst_n, d23_validFFNumber);
 		FD2 d23_specialFF(d23_special, d12_special, clk, rst_n, d23_specialFFNumber);
-		REGP #(3) d23_ctrlFF(d23_CTRL, d12_CTRL, clk, rst_n, d23_ctrlFFNumber);
-		REGP #(6) d23_add01FF(d23_add01, add01, clk, rst_n, d23_add01FFNumber);
-		REGP #(6) d23_add23FF(d23_add23, add23, clk, rst_n, d23_add23FFNumber);
+		REGP #(3) d23_ctrlFF(d23_CTRL[2:0], d12_CTRL[2:0], clk, rst_n, d23_ctrlFFNumber);
+		REGP #(6) d23_add01FF(d23_add01[5:0], add01[5:0], clk, rst_n, d23_add01FFNumber);
+		REGP #(6) d23_add23FF(d23_add23[5:0], add23[5:0], clk, rst_n, d23_add23FFNumber);
 		
 		assign stage23FFNumber = d23_signFFNumber + d23_validFFNumber + d23_specialFFNumber + d23_ctrlFFNumber + d23_add01FFNumber + d23_add23FFNumber;
 
@@ -119,7 +119,7 @@ module sigmoid (
 		wire d34_sign, d34_valid, d34_special;
 		wire [7:0] d34_mul;
 		wire [9:0] d34_bValue;
-		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_specialFFNumber, d34_mulFFNumber, d34_bValueNumber;
+		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_specialFFNumber, d34_mulFFNumber, d34_bValueFFNumber;
 		wire [50:0] stage34FFNumber;
 
 		FD2 d34_signFF(d34_sign, d23_sign, clk, rst_n, d34_signFFNumber);
@@ -151,7 +151,8 @@ module sigmoid (
 
 	/*------------------------------------------ Stage 5 ------------------------------------------*/
 		// output handling
-		wire [15:0] outTemp1, d45_nSign;
+		wire d45_nSign;
+		wire [15:0] outTemp1;
 		wire [50:0] xor2BusNumber, ivSignNumber;
 		IV(d45_nSign, d45_sign, ivSignNumber);
 		assign outTemp1[ 0] = 1'b1;
@@ -877,12 +878,8 @@ module b10bitsSelectorEnhanced(
 		assign number8 = nand1n2Number + out8Number;
 
 	// out[9] = CTRL[0] + CTRL[1]CTRL[2]
-		wire nand12;
-		wire [50:0] nand12Number, out9Number;
 		wire [50:0] number9;
-		ND2(nand12, CTRL[1], CTRL[2], nand12Number);
-		ND2(out[9], nCTRL[0], nand12, out9Number);
-		assign number9 = nand12Number + out9Number;
+		ND2(out[9], nCTRL[0], nand12, number9);
 
 	assign number = number0 + number1 + number2 + number3 + number4
 				  + number5 + number6 + number7 + number8 + number9;
