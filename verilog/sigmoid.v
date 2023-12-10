@@ -152,13 +152,15 @@ module sigmoid (
 
 	/*------------------------------------------ Stage 5 ------------------------------------------*/
 		// output handling
-		wire [15:0] outTemp1;
-		wire [50:0] xor2BusNumber;
+		wire [15:0] outTemp1, d45_nSign;
+		wire [50:0] xor2BusNumber, ivSignNumber;
+		IV(d45_nSign, d45_sign, ivSignNumber);
 		assign outTemp1[ 0] = 1'b1;
 		assign outTemp1[ 1] = 1'b1;
 		assign outTemp1[ 2] = 1'b0;
 		assign outTemp1[ 3] = d45_sign;
-		Xor2Bus #(11) (outTemp1[14:4], {1'b1, d45_funcOut[9:0]}, d45_sign, xor2BusNumber);
+		Xor2Bus #(10) (outTemp1[13:4], d45_funcOut[9:0], d45_sign, xor2BusNumber);
+		assign outTemp1[14] = d45_nSign;
 		assign outTemp1[15] = 1'b0;
 		
 		// special  --> 0 000_0010_0100_1 10 1
@@ -167,19 +169,20 @@ module sigmoid (
 		// 9,6,3 -> x + special = (x' & special')'
 		wire [15:0] outTemp2;
 
-		wire nSpecial, n9, n6, n3;
+		wire d45_nSpecial, n9, n6, n3;
 		wire [50:0] ivBusNumber, nandBusNumber, andBusNumber;
-		IvBus #(4) ({nSpecial, n9, n6, n3}, {d45_special, outTemp1[9], outTemp1[6], outTemp1[3]}, ivBusNumber);
+		assign n3 = d45_nSign;
+		IvBus #(3) ({d45_nSpecial, n9, n6}, {d45_special, outTemp1[9], outTemp1[6]}, ivBusNumber);
 
 		assign outTemp2[ 0] = 1'b1;
-		assign outTemp2[ 1] = nSpecial;
+		assign outTemp2[ 1] = d45_nSpecial;
 		assign outTemp2[ 2] = d45_special;
-		Nand2Bus #(3) ({outTemp2[9], outTemp2[6], outTemp2[3]}, {n9, n6, n3}, nSpecial, nandBusNumber);
-		And2Bus #(9) ({outTemp2[14:10], outTemp2[8:7], outTemp2[5:4]}, {outTemp1[14:10], outTemp1[8:7], outTemp1[5:4]}, nSpecial, andBusNumber);
+		Nand2Bus #(3) ({outTemp2[9], outTemp2[6], outTemp2[3]}, {n9, n6, n3}, d45_nSpecial, nandBusNumber);
+		And2Bus #(9) ({outTemp2[14:10], outTemp2[8:7], outTemp2[5:4]}, {outTemp1[14:10], outTemp1[8:7], outTemp1[5:4]}, d45_nSpecial, andBusNumber);
 		assign outTemp2[15] = 1'b0;
 
 		wire [50:0] stage5Number;
-		assign stage5Number = xor2BusNumber + ivBusNumber + nandBusNumber + andBusNumber;
+		assign stage5Number = xor2BusNumber + ivSignNumber + ivBusNumber + nandBusNumber + andBusNumber;
 
 	/*------------------------------------- Stage 5 --> Output -------------------------------------*/
 		wire [50:0] outputValidFFNumber, outputFFNumber;
@@ -500,18 +503,18 @@ module Mux8Bus#(
 	assign number = sum;
 endmodule
 
-module carrySkip4(
-		output [3:0] S,
+module carrySkip2(
+		output [1:0] S,
 		output Cout,
-		input [3:0] A,
-		input [3:0] B,
+		input [1:0] A,
+		input [1:0] B,
 		input Cin,
 		output [50:0] number
 	);
 	/*------------------------------------------ P, nG ------------------------------------------*/
-		wire [3:0] P, nG;
-		wire [50:0]  P0number,  P1number,  P2number,  P3number;
-		wire [50:0] nG0number, nG1number, nG2number, nG3number;
+		wire [1:0] P, nG;
+		wire [50:0]  P0number,  P1number;
+		wire [50:0] nG0number, nG1number;
 		wire [50:0] Pnumber, nGnumber;
 
 		// P0, nG0
@@ -522,171 +525,92 @@ module carrySkip4(
 		EO(  P[1], A[1], B[1],  P1number);
 		ND2(nG[1], A[1], B[1], nG1number);
 
-		// P2, nG2
-		EO(  P[2], A[2], B[2],  P2number);
-		ND2(nG[2], A[2], B[2], nG2number);
-
-		// P3, nG3
-		EO(  P[3], A[3], B[3],  P3number);
-		ND2(nG[3], A[3], B[3], nG3number);
-
-		assign  Pnumber =  P0number +  P1number +  P2number +  P3number;
-		assign nGnumber = nG0number + nG1number + nG2number + nG3number;
+		assign  Pnumber =  P0number +  P1number;
+		assign nGnumber = nG0number + nG1number;
 
 	/*----------------------------------------- Gk0, Tk0 -----------------------------------------*/
-		wire G10, G20, G30, tempCout;
-		wire T10, T20, T30, T40;
-		wire [50:0] G10number, G20number, G30number, G40number;
-		wire [50:0] T10number, T20number, T30number, T40number;
+		wire G10, empCout;
+		wire T10, T20;
+		wire [50:0] G10number, G20number;
+		wire [50:0] T10number, T20number;
 		wire [50:0] Gknumber, Tknumber;
 
 		// G10
 		ND2(T10, Cin,  P[0], T10number);
 		ND2(G10, T10, nG[0], G10number);
 
-		// G20
-		ND2(T20, G10,  P[1], T20number);
-		ND2(G20, T20, nG[1], G20number);
-
-		// G30
-		ND2(T30, G20,  P[2], T30number);
-		ND2(G30, T30, nG[2], G30number);
-
 		// tempCout
-		ND2(     T40, G30,  P[3], T40number);
-		ND2(tempCout, T40, nG[3], G40number);
+		ND2(T20, G10,  P[1], T20number);
+		ND2(tempCout, T20, nG[1], G20number);
 
-		assign Tknumber = T10number + T20number + T30number + T40number;
-		assign Gknumber = G10number + G20number + G30number + G40number;
+		assign Tknumber = T10number + T20number;
+		assign Gknumber = G10number + G20number;
 
 	/*------------------------------------------ S[3:0] ------------------------------------------*/
-		wire [50:0] S0number, S1number, S2number, S3number;
+		wire [50:0] S0number, S1number;
 		wire [50:0] Snumber;
 
 		// S[3:0]
 		EO(S[0], P[0], Cin, S0number);
 		EO(S[1], P[1], G10, S1number);
-		EO(S[2], P[2], G20, S2number);
-		EO(S[3], P[3], G30, S3number);
 		
-		assign Snumber = S0number + S1number + S2number + S3number;
+		assign Snumber = S0number + S1number;
 
 	/*------------------------------------------ Cout ------------------------------------------*/
 		wire pAnd;
 		wire [50:0] pAndNumber, muxNumber;
 
-		AN4(pAnd, P[0], P[1], P[2], P[3], pAndNumber);
-		MUX21H(Cout, tempCout, Cin, pAnd, muxNumber);
+		ND2(pAnd, P[0], P[1], pAndNumber);
+		MUX21H(Cout, Cin, tempCout, pAnd, muxNumber);
 
 	assign number = Pnumber + nGnumber + Tknumber + Gknumber + Snumber + pAndNumber + muxNumber;
 endmodule
 
-module carrySkip4NoB(
-		output [3:0] S,
+module carrySkip2NoB(
+		output [1:0] S,
 		output Cout,
-		input [3:0] A,
+		input [1:0] A,
 		input Cin,
 		output [50:0] number
 	);
-	/*------------------------------------------- Gk0 -------------------------------------------*/
-		wire G10, G20, G30, tempCout;
-		wire [50:0] G10number, G20number, G30number, G40number;
-		wire [50:0] Gknumber;
+	wire andbc;
+	wire [50:0] number1, number2, number3, number4;
 
-		// G10
-		AN2(G10, Cin, A[0], G10number);
+	EO(S[0], A[0], Cin, number1);
+	AN2(andbc, A[0], Cin, number2);
+	EO(S[1], A[1], andbc, number3);
+	AN3(Cout, A[1], A[0], Cin, number4);
 
-		// G20
-		AN2(G20, G10, A[1], G20number);
-
-		// G30
-		AN2(G30, G20, A[2], G30number);
-
-		// tempCout
-		AN2(tempCout, G30, A[3], G40number);
-
-		assign Gknumber = G10number + G20number + G30number + G40number;
-
-	/*------------------------------------------ S[3:0] ------------------------------------------*/
-		wire [50:0] S0number, S1number, S2number, S3number;
-		wire [50:0] Snumber;
-
-		// S[3:0]
-		EO(S[0], A[0], Cin, S0number);
-		EO(S[1], A[1], G10, S1number);
-		EO(S[2], A[2], G20, S2number);
-		EO(S[3], A[3], G30, S3number);
-		
-		assign Snumber = S0number + S1number + S2number + S3number;
-
-	/*------------------------------------------ Cout ------------------------------------------*/
-		wire aAnd;
-		wire [50:0] aAndNumber, muxNumber;
-
-		AN4(aAnd, A[0], A[1], A[2], A[3], aAndNumber);
-		MUX21H(Cout, tempCout, Cin, aAnd, muxNumber);
-
-	assign number = Gknumber + Snumber + aAndNumber + muxNumber;
+	assign number = number1 + number2 + number3 + number4;
 endmodule
 
-module carrySkip4NoBCin1(
-		output [3:0] S,
+module carrySkip2NoBCin1(
+		output [1:0] S,
 		output Cout,
-		input [3:0] A,
+		input [1:0] A,
 		output [50:0] number
 	);
-	/*------------------------------------------- Gk0 -------------------------------------------*/
-		wire G10, G20, G30, tempCout;
-		wire [50:0] G20number, G30number, G40number;
-		wire [50:0] Gknumber;
+	wire andbc;
+	wire [50:0] number1, number3, number4;
 
-		// G10
-		assign G10 = A[0];
+	IV(S[0], A[0], number1);
+	EO(S[1], A[1], A[0], number3);
+	AN2(Cout, A[1], A[0], number4);
 
-		// G20
-		AN2(G20, G10, A[1], G20number);
-
-		// G30
-		AN2(G30, G20, A[2], G30number);
-
-		// tempCout
-		AN2(tempCout, G30, A[3], G40number);
-
-		assign Gknumber = G20number + G30number + G40number;
-
-	/*------------------------------------------ S[3:0] ------------------------------------------*/
-		wire [50:0] S0number, S1number, S2number, S3number;
-		wire [50:0] Snumber;
-
-		// S[3:0]
-		IV(S[0], 	  A[0], S0number);
-		EO(S[1], A[1], G10, S1number);
-		EO(S[2], A[2], G20, S2number);
-		EO(S[3], A[3], G30, S3number);
-		
-		assign Snumber = S0number + S1number + S2number + S3number;
-
-	/*------------------------------------------ Cout ------------------------------------------*/
-		wire aAnd;
-		wire [50:0] aAndNumber, orNumber;
-
-		AN4(aAnd, A[0], A[1], A[2], A[3], aAndNumber);
-		OR2(Cout, tempCout, aAnd, orNumber);
-
-	assign number = Gknumber + Snumber + aAndNumber + orNumber;
+	assign number = number1 + number3 + number4;
 endmodule
 
-module carrySkip4NoCin(
-		output [3:0] S,
+module carrySkip2NoCin(
+		output [1:0] S,
 		output Cout,
-		input [3:0] A,
-		input [3:0] B,
+		input [1:0] A,
+		input [1:0] B,
 		output [50:0] number
 	);
 	/*------------------------------------------ P, nG ------------------------------------------*/
-		wire [3:0] P, nG;
-		wire [50:0]  P0number,  P1number,  P2number,  P3number;
-		wire [50:0] nG0number, nG1number, nG2number, nG3number;
+		wire [1:0] P, nG;
+		wire [50:0]  P0number,  P1number;
+		wire [50:0] nG0number, nG1number;
 		wire [50:0] Pnumber, nGnumber;
 
 		// P0, nG0
@@ -697,130 +621,100 @@ module carrySkip4NoCin(
 		EO(  P[1], A[1], B[1],  P1number);
 		ND2(nG[1], A[1], B[1], nG1number);
 
-		// P2, nG2
-		EO(  P[2], A[2], B[2],  P2number);
-		ND2(nG[2], A[2], B[2], nG2number);
-
-		// P3, nG3
-		EO(  P[3], A[3], B[3],  P3number);
-		ND2(nG[3], A[3], B[3], nG3number);
-
-		assign  Pnumber =  P0number +  P1number +  P2number +  P3number;
-		assign nGnumber = nG0number + nG1number + nG2number + nG3number;
+		assign  Pnumber =  P0number +  P1number;
+		assign nGnumber = nG0number + nG1number;
 
 	/*----------------------------------------- Gk0, Tk0 -----------------------------------------*/
-		wire G10, G20, G30, tempCout;
-		wire T10, T20, T30, T40;
-		wire [50:0] G20number, G30number, G40number;
-		wire [50:0] T20number, T30number, T40number;
+		wire G10, tempCout;
+		wire T10, T20;
+		wire [50:0] G20number;
+		wire [50:0] T20number;
 		wire [50:0] Gknumber, Tknumber;
 
 		// G10
 		assign G10 = nG[0];
 
-		// G20
-		ND2(T20, G10,  P[1], T20number);
-		ND2(G20, T20, nG[1], G20number);
-
-		// G30
-		ND2(T30, G20,  P[2], T30number);
-		ND2(G30, T30, nG[2], G30number);
-
 		// tempCout
-		ND2(     T40, G30,  P[3], T40number);
-		ND2(tempCout, T40, nG[3], G40number);
+		ND2(T20, G10,  P[1], T20number);
+		ND2(tempCout, T20, nG[1], G20number);
 
-		assign Tknumber = T20number + T30number + T40number;
-		assign Gknumber = G20number + G30number + G40number;
+		assign Tknumber = T20number;
+		assign Gknumber = G20number;
 
 	/*------------------------------------------ S[3:0] ------------------------------------------*/
-		wire [50:0] S1number, S2number, S3number;
 		wire [50:0] Snumber;
 
 		// S[3:0]
 		assign S[0] = P[0];
-		EO(S[1], P[1], G10, S1number);
-		EO(S[2], P[2], G20, S2number);
-		EO(S[3], P[3], G30, S3number);
-		
-		assign Snumber = S1number + S2number + S3number;
+		EO(S[1], P[1], G10, Snumber);
 
 	/*------------------------------------------ Cout ------------------------------------------*/
 		wire pAnd;
 		wire [50:0] pAndNumber, muxNumber;
 
-		AN4(pAnd, P[0], P[1], P[2], P[3], pAndNumber);
-		MUX21H(Cout, tempCout, 1'b0, pAnd, muxNumber);
+		ND2(pAnd, P[0], P[1], pAndNumber);
+		AN2(Cout, tempCout, pAnd, muxNumber);
 
 	assign number = Pnumber + nGnumber + Tknumber + Gknumber + Snumber + pAndNumber + muxNumber;
 endmodule
 
-module carrySkip4NoCout(
+module carrySkip2NoBNoCout(
+		output [1:0] S,
+		input [1:0] A,
+		input Cin,
+		output [50:0] number
+	);
+	wire andbc;
+	wire [50:0] number1, number2, number3;
+
+	EO(S[0], A[0], Cin, number1);
+	AN2(andbc, A[0], Cin, number2);
+	EO(S[1], A[1], andbc, number3);
+
+	assign number = number1 + number2 + number3;
+endmodule
+
+module carrySkip4(
 		output [3:0] S,
+		output Cout,
 		input [3:0] A,
 		input [3:0] B,
 		input Cin,
 		output [50:0] number
 	);
-	/*------------------------------------------ P, nG ------------------------------------------*/
-		wire [3:0] P, nG;
-		wire [50:0]  P0number,  P1number,  P2number,  P3number;
-		wire [50:0] nG0number, nG1number, nG2number;
-		wire [50:0] Pnumber, nGnumber;
+	wire carry;
+	wire [50:0] number1, number2;
+	carrySkip2(S[1:0], carry, A[1:0], B[1:0],   Cin, number1);
+	carrySkip2(S[3:2],  Cout, A[3:2], B[3:2], carry, number2);
+	assign number = number1 + number2;
+endmodule
 
-		// P0, nG0
-		EO(  P[0], A[0], B[0],  P0number);
-		ND2(nG[0], A[0], B[0], nG0number);
+module carrySkip4NoCin(
+		output [3:0] S,
+		output Cout,
+		input [3:0] A,
+		input [3:0] B,
+		output [50:0] number
+	);
+	wire carry;
+	wire [50:0] number1, number2;
+	carrySkip2NoCin(S[1:0], carry, A[1:0], B[1:0], number1);
+	carrySkip2(S[3:2], Cout, A[3:2], B[3:2], carry, number2);
+	assign number = number1 + number2;
+endmodule
 
-		// P1, nG1
-		EO(  P[1], A[1], B[1],  P1number);
-		ND2(nG[1], A[1], B[1], nG1number);
-
-		// P2, nG2
-		EO(  P[2], A[2], B[2],  P2number);
-		ND2(nG[2], A[2], B[2], nG2number);
-
-		// P3
-		EO(  P[3], A[3], B[3],  P3number);
-
-		assign  Pnumber =  P0number +  P1number +  P2number +  P3number;
-		assign nGnumber = nG0number + nG1number + nG2number;
-
-	/*----------------------------------------- Gk0, Tk0 -----------------------------------------*/
-		wire G10, G20, G30;
-		wire T10, T20, T30;
-		wire [50:0] G10number, G20number, G30number;
-		wire [50:0] T10number, T20number, T30number;
-		wire [50:0] Gknumber, Tknumber;
-
-		// G10
-		ND2(T10, Cin,  P[0], T10number);
-		ND2(G10, T10, nG[0], G10number);
-
-		// G20
-		ND2(T20, G10,  P[1], T20number);
-		ND2(G20, T20, nG[1], G20number);
-
-		// G30
-		ND2(T30, G20,  P[2], T30number);
-		ND2(G30, T30, nG[2], G30number);
-
-		assign Tknumber = T10number + T20number + T30number;
-		assign Gknumber = G10number + G20number + G30number;
-
-	/*------------------------------------------ S[3:0] ------------------------------------------*/
-		wire [50:0] S0number, S1number, S2number, S3number;
-		wire [50:0] Snumber;
-
-		// S[3:0]
-		EO(S[0], P[0], Cin, S0number);
-		EO(S[1], P[1], G10, S1number);
-		EO(S[2], P[2], G20, S2number);
-		EO(S[3], P[3], G30, S3number);
-		
-		assign Snumber = S0number + S1number + S2number + S3number;
-
-	assign number = Pnumber + nGnumber + Tknumber + Gknumber + Snumber;
+module carrySkip8NoCin(
+		output [7:0] S,
+		output Cout,
+		input [7:0] A,
+		input [7:0] B,
+		output [50:0] number
+	);
+	wire carryBetween;
+	wire [50:0] number1, number2;
+	carrySkip4NoCin( S[3:0], carryBetween, A[3:0], B[3:0],               number1);
+	carrySkip4(      S[7:4],         Cout, A[7:4], B[7:4], carryBetween, number2);
+	assign number = number1 + number2;
 endmodule
 
 module addOne(
@@ -828,14 +722,15 @@ module addOne(
 		input [7:0] in,
 		output [50:0] number
 	);
-	wire carryBetween, carryOut;
-	wire [50:0] number1, number2;
+	wire carry1, carry2, carry3;
+	wire [50:0] number1, number2, number3, number4;
 
-	// carrySkip4NoB(out[3:0], carryBetween, in[3:0],         1'b1, number1);
-	carrySkip4NoBCin1(out[3:0], carryBetween, in[3:0],               number1);
-	carrySkip4NoB(    out[7:4],     carryOut, in[7:4], carryBetween, number2);
+	carrySkip2NoBCin1(out[1:0], carry1, in[1:0], number1);
+	carrySkip2NoB(out[3:2], carry2, in[3:2], carry1, number2);
+	carrySkip2NoB(out[5:4], carry3, in[5:4], carry2, number3);
+	carrySkip2NoBNoCout(out[7:6], in[7:6], carry3, number4);
 
-	assign number = number1 + number2;
+	assign number = number1 + number2 + number3 + number4;
 endmodule
 
 module a4bitsSelector(
@@ -880,19 +775,17 @@ module a4bitsSelectorEnhanced(
 	assign out[2] = nCTRL1;
 
 	// out[1] =  CTRL0'CTRL1'+ CTRL2'
-	//        = [(CTRL0+CTRL1)CTRL2]'
 	wire or01;
 	wire [50:0] or01Number, out1Number;
-	OR2(  or01, CTRL0, CTRL1, or01Number);
-	ND2(out[1],  or01, CTRL2, out1Number);
+	ND2(  or01, nCTRL0, nCTRL1, or01Number);
+	ND2(out[1],   or01,  CTRL2, out1Number);
 
 	// out[0] =  CTRL0'CTRL2'+ CTRL0CTRL1CTRL2
-	//        = [(CTRL0+CTRL2)(CTRL0CTRL1CTRL2)']'
 	wire or02, nand012;
 	wire [50:0] or02Number, nand012Number, out0Number;
-	OR2(    or02, CTRL0, CTRL2, or02Number);
-	ND3( nand012, CTRL0, CTRL1, CTRL2, nand012Number);
-	ND2(  out[0],  or02, nand012, out0Number);
+	ND2(    or02, nCTRL0,  nCTRL2, or02Number);
+	ND3( nand012,  CTRL0,   CTRL1, CTRL2, nand012Number);
+	ND2(  out[0],   or02, nand012, out0Number);
 
 	assign number = or01Number + out1Number + or02Number + nand012Number + out0Number;
 endmodule
@@ -1014,21 +907,6 @@ module b10bitsSelectorEnhanced(
 
 	assign number = number0 + number1 + number2 + number3 + number4
 				  + number5 + number6 + number7 + number8 + number9;
-
-endmodule
-
-module carrySkip8NoCin(
-		output [7:0] S,
-		output Cout,
-		input [7:0] A,
-		input [7:0] B,
-		output [50:0] number
-	);
-	wire carryBetween;
-	wire [50:0] number1, number2;
-	carrySkip4NoCin( S[3:0], carryBetween, A[3:0], B[3:0],               number1);
-	carrySkip4(      S[7:4],         Cout, A[7:4], B[7:4], carryBetween, number2);
-	assign number = number1 + number2;
 endmodule
 
 module mulStage1(
