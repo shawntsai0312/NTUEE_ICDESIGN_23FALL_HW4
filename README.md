@@ -1,6 +1,10 @@
 # IC Design 23Fall HW4
 ##### author : B10901176 蔡弘祥
 
+#### Goal
+* Using basic logic gates and flip-flops to realize a "Sigmoid Approximator"
+* For more Info, please checkout documents in doc/HW4_2023.pdf
+
 #### Before Running
 ```shell
 source ./tool.sh
@@ -19,10 +23,6 @@ nWave &
 1. Open sigmoid.vcd
 2. Get signals : tb/DUT
 3. Choose the signals wanna check
-
-#### Goal
-* Using basic logic gates and flip-flops to realize a "Sigmoid Approximator"
-* For more Info, please checkout documents in doc/HW4_2023.pdf
 
 #### Input and Output Signals Explanation
 * Input : a 8-bit signed binary number (2's complement), divided by 32 to get decimal value
