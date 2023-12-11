@@ -79,8 +79,8 @@ module sigmoid (
 
 	/*------------------------------------------ Stage 2 ------------------------------------------*/
 		// multiplication 1
-		wire [50:0] stage2Number;
 		wire [5:0] add01, add23;
+		wire [50:0] stage2Number;
 		mulStage1(add01[5:0], add23[5:0], d12_aValue[3:0], d12_abs_x[3:0], stage2Number);
 
 	/*--------------------------------------- Stage 2 --> 3 ---------------------------------------*/
@@ -107,7 +107,7 @@ module sigmoid (
 
 		// get b
 		wire [9:0] bValue;
-		wire [50:0] bSelectNumber, d23_ivNumber;
+		wire [50:0] d23_ivNumber, bSelectNumber;
 		wire [2:0] d23_nCTRL;
 		IvBus #(3) (d23_nCTRL[2:0], d23_CTRL[2:0], d23_ivNumber);
 		b10bitsSelectorEnhanced(bValue[9:0], d23_CTRL[2:0], d23_nCTRL[2:0], bSelectNumber);
@@ -119,16 +119,16 @@ module sigmoid (
 		wire d34_sign, d34_valid, d34_special;
 		wire [7:0] d34_mul;
 		wire [9:0] d34_bValue;
-		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_specialFFNumber, d34_mulFFNumber, d34_bValueFFNumber;
+		wire [50:0] d34_signFFNumber, d34_validFFNumber, d34_specialFFNumber, d34_mulFFNumber, d34_bFFNumber;
 		wire [50:0] stage34FFNumber;
 
 		FD2 d34_signFF(d34_sign, d23_sign, clk, rst_n, d34_signFFNumber);
 		FD2 d34_validFF(d34_valid, d23_valid, clk, rst_n, d34_validFFNumber);
 		FD2 d34_specialFF(d34_special, d23_special, clk, rst_n, d34_specialFFNumber);
 		REGP #(8) d34_mulFF(d34_mul[7:0], mul[7:0], clk, rst_n, d34_mulFFNumber);
-		REGP #(10) d34_bFF(d34_bValue[9:0], bValue[9:0], clk, rst_n, d34_bValueFFNumber);
+		REGP #(10) d34_bFF(d34_bValue[9:0], bValue[9:0], clk, rst_n, d34_bFFNumber);
 		
-		assign stage34FFNumber = d34_signFFNumber + d34_validFFNumber + d34_specialFFNumber + d34_mulFFNumber + d34_bValueFFNumber;
+		assign stage34FFNumber = d34_signFFNumber + d34_validFFNumber + d34_specialFFNumber + d34_mulFFNumber + d34_bFFNumber;
 
 	/*------------------------------------------ Stage 4 ------------------------------------------*/
 		// add b
@@ -153,7 +153,7 @@ module sigmoid (
 		// output handling
 		wire d45_nSign;
 		wire [15:0] outTemp1;
-		wire [50:0] xor2BusNumber, ivSignNumber;
+		wire [50:0] ivSignNumber, xor2BusNumber;
 		IV(d45_nSign, d45_sign, ivSignNumber);
 		assign outTemp1[ 0] = 1'b1;
 		assign outTemp1[ 1] = 1'b1;
@@ -182,7 +182,7 @@ module sigmoid (
 		assign outTemp2[15] = 1'b0;
 
 		wire [50:0] stage5Number;
-		assign stage5Number = xor2BusNumber + ivSignNumber + ivBusNumber + nandBusNumber + andBusNumber;
+		assign stage5Number = ivSignNumber + xor2BusNumber + ivBusNumber + nandBusNumber + andBusNumber;
 
 	/*------------------------------------- Stage 5 --> Output -------------------------------------*/
 		wire [50:0] outputValidFFNumber, outputFFNumber;
@@ -469,7 +469,7 @@ module Mux8Bus#(
 		input  [BW-1:0] in101,
 		input  [BW-1:0] in110,
 		input  [BW-1:0] in111,
-		input  [2   :0]  CTRL,
+		input  [   2:0]  CTRL,
 		output [  50:0] number
 	);
 
@@ -557,40 +557,6 @@ module carrySkip2(
 	assign number = Pnumber + nGnumber + Tknumber + Gknumber + Snumber + pAndNumber + muxNumber;
 endmodule
 
-module carrySkip2NoB(
-		output [1:0] S,
-		output Cout,
-		input [1:0] A,
-		input Cin,
-		output [50:0] number
-	);
-	wire andbc;
-	wire [50:0] number1, number2, number3, number4;
-
-	EO(S[0], A[0], Cin, number1);
-	AN2(andbc, A[0], Cin, number2);
-	EO(S[1], A[1], andbc, number3);
-	AN3(Cout, A[1], A[0], Cin, number4);
-
-	assign number = number1 + number2 + number3 + number4;
-endmodule
-
-module carrySkip2NoBCin1(
-		output [1:0] S,
-		output Cout,
-		input [1:0] A,
-		output [50:0] number
-	);
-	wire andbc;
-	wire [50:0] number1, number3, number4;
-
-	IV(S[0], A[0], number1);
-	EO(S[1], A[1], A[0], number3);
-	AN2(Cout, A[1], A[0], number4);
-
-	assign number = number1 + number3 + number4;
-endmodule
-
 module carrySkip2NoCin(
 		output [1:0] S,
 		output Cout,
@@ -649,6 +615,41 @@ module carrySkip2NoCin(
 	assign number = Pnumber + nGnumber + Tknumber + Gknumber + Snumber + pAndNumber + muxNumber;
 endmodule
 
+module carrySkip2NoB(
+		output [1:0] S,
+		output Cout,
+		input [1:0] A,
+		input Cin,
+		output [50:0] number
+	);
+	wire andbc;
+	wire [50:0] number1, number2, number3, number4;
+
+	EO(S[0], A[0], Cin, number1);
+
+	AN2(andbc, A[0], Cin, number2);
+	EO(S[1], A[1], andbc, number3);
+
+	AN3(Cout, A[1], A[0], Cin, number4);
+
+	assign number = number1 + number2 + number3 + number4;
+endmodule
+
+module carrySkip2NoBCin1(
+		output [1:0] S,
+		output Cout,
+		input [1:0] A,
+		output [50:0] number
+	);
+	wire [50:0] number1, number3, number4;
+
+	IV(S[0], A[0], number1);
+	EO(S[1], A[1], A[0], number3);
+	AN2(Cout, A[1], A[0], number4);
+
+	assign number = number1 + number3 + number4;
+endmodule
+
 module carrySkip2NoBNoCout(
 		output [1:0] S,
 		input [1:0] A,
@@ -658,9 +659,11 @@ module carrySkip2NoBNoCout(
 	wire nd, iv;
 	wire [50:0] number1, number2, number3, number4;
 	EO(S[0], A[0], Cin, number1);
+
 	ND2(nd, A[0], Cin, number2);
 	IV(iv, A[1], number3);
 	ND2(S[1], nd, iv, number4);
+
 	assign number = number1 + number2 + number3 + number4;
 endmodule
 
@@ -756,13 +759,13 @@ module a4bitsSelectorEnhanced(
 	// out[2] = CTRL[1]'
 	assign out[2] = nCTRL[1];
 
-	// out[1] =  CTRL[2]'CTRL[1]'+ CTRL[0]'
+	// out[1] =  CTRL[2]'CTRL[1]' + CTRL[0]'
 	wire or01;
 	wire [50:0] or01Number, out1Number;
 	ND2(  or01, nCTRL[2], nCTRL[1], or01Number);
 	ND2(out[1],   or01,  CTRL[0], out1Number);
 
-	// out[0] =  CTRL[2]'CTRL[0]'+ CTRL[2]CTRL[1]CTRL[0]
+	// out[0] =  CTRL[2]'CTRL[0]' + CTRL[2]CTRL[1]CTRL[0]
 	wire or02, nand012;
 	wire [50:0] or02Number, nand012Number, out0Number;
 	ND2(    or02, nCTRL[2],  nCTRL[0], or02Number);
@@ -890,10 +893,10 @@ module mulStage1(
 		wire [50:0] andNumber0, andNumber1, andNumber2, andNumber3;
 		wire [50:0] andNumber;
 
-		And2Bus #(4) (abs_x0, abs_x[3:0], aValue[0], andNumber0);
-		And2Bus #(4) (abs_x1, abs_x[3:0], aValue[1], andNumber1);
-		And2Bus #(4) (abs_x2, abs_x[3:0], aValue[2], andNumber2);
-		And2Bus #(4) (abs_x3, abs_x[3:0], aValue[3], andNumber3);
+		And2Bus #(4) (abs_x0[3:0], abs_x[3:0], aValue[0], andNumber0);
+		And2Bus #(4) (abs_x1[3:0], abs_x[3:0], aValue[1], andNumber1);
+		And2Bus #(4) (abs_x2[3:0], abs_x[3:0], aValue[2], andNumber2);
+		And2Bus #(4) (abs_x3[3:0], abs_x[3:0], aValue[3], andNumber3);
 		assign andNumber = andNumber0 + andNumber1 + andNumber2 + andNumber3;
 
 		wire carry01, carry23;
@@ -910,35 +913,31 @@ module mulStage1(
 endmodule
 
 module mulStage2(
-		output [7:0] S,
+		output [7:0] mul,
 		input [5:0] add01,
 		input [5:0] add23,
 		output [50:0] number
 	);
-	assign S[1:0] = add01[1:0];
-	wire carry5, n7, nd6;
-	wire [50:0] ck4Number, xorNumber, nand2Number1, ivNumber, nand2Number2;
+	wire carry;
+	wire [50:0] ck4Number, ck2Number;
 
-	carrySkip4NoCin(S[5:2], carry5, add01[5:2], add23[3:0], ck4Number);
-	EO(S[6], add23[4], carry5, xorNumber);
-	ND2(nd6, carry5, add23[4], nand2Number1);
-	IV(n7, add23[5], ivNumber);
-	ND2(S[7], nd6, n7, nand2Number2);
-
-	assign number = ck4Number + xorNumber + nand2Number1 + ivNumber + nand2Number2;
+	assign mul[1:0] = add01[1:0];
+	carrySkip4NoCin(mul[5:2], carry, add01[5:2], add23[3:0], ck4Number);
+	carrySkip2NoBNoCout(mul[7:6], add23[5:4], carry, ck2Number);
+	assign number = ck4Number + ck2Number;
 endmodule
 
 module addStage(
 		output [9:0] S,
 		input [7:0] mul,
-		input [9:0] b,
+		input [9:0] bValue,
 		output [50:0] number
 	);
 	wire carry, n9, nd8;
-	wire [50:0] ck8Number, xorNumber, nand2Number1, ivNumber, nand2Number2, ck2Number;
+	wire [50:0] ck8Number, ck2Number;
 
-	carrySkip8NoCin(S[7:0], carry, mul[7:0], b[7:0], ck8Number);
-	carrySkip2NoBNoCout(S[9:8], b[9:8], carry, ck2Number);
+	carrySkip8NoCin(S[7:0], carry, mul[7:0], bValue[7:0], ck8Number);
+	carrySkip2NoBNoCout(S[9:8], bValue[9:8], carry, ck2Number);
 
 	assign number = ck8Number + ck2Number;
 endmodule

@@ -23,10 +23,12 @@ const bComponent = [
 ]
 
 const a = aComponent.map(each => {
+    // combine the components to get the value
     return each.reduce((acc, current) => acc + Math.pow(2, -current), 0)
 })
 
 const b = bComponent.map(each => {
+    // combine the components to get the value
     return each.reduce((acc, current) => acc + Math.pow(2, -current), 0)
 })
 
